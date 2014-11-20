@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration SYSTEM "configuration.dtd">
+<configuration>
+    <defaults>
+        <username>hadoop</username>
+        <installationDirectory>/home/hadoop/hadoop</installationDirectory>
+    </defaults>
+    <nodes>
+        <node>
+            <hostname>localhost</hostname>
+            <port>22</port>
+        </node>
+    </nodes>
+    <ssh>
+        <sshKeyFile>/home/julian/tesis/ssh_keys/id_rsa</sshKeyFile>
+    </ssh>
+</configuration>

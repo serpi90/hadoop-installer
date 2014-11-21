@@ -1,13 +1,1 @@
-<!ELEMENT configuration (defaults,nodes,ssh,files)>
-<!ELEMENT defaults (username,installationDirectory)>
-<!ELEMENT nodes (node+)>
-<!ELEMENT node (hostname,port?,username?,installationDirectory?)>
-<!ELEMENT hostname (#PCDATA)>
-<!ELEMENT port (#PCDATA)>
-<!ELEMENT username (#PCDATA)>
-<!ELEMENT installationDirectory (#PCDATA)>
-<!ELEMENT ssh (sshKeyFile?)>
-<!ELEMENT sshKeyFile (#PCDATA)>
-<!ELEMENT files (hadoop,java7)>
-<!ELEMENT hadoop (#PCDATA)>
-<!ELEMENT java7 (#PCDATA)>
+src/main/resources/configuration.dtd

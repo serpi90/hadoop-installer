@@ -1,24 +1,24 @@
 package installer;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
+import installer.SshCommand.ExecutionError;
+
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.security.DigestInputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 import org.apache.commons.logging.Log;
-import org.apache.commons.vfs2.AllFileSelector;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemManager;
 import org.apache.commons.vfs2.FileSystemOptions;
+import org.apache.commons.vfs2.FileType;
 import org.apache.commons.vfs2.VFS;
 import org.apache.commons.vfs2.provider.sftp.SftpFileSystemConfigBuilder;
 
-import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
@@ -33,28 +33,130 @@ public class Installer {
 	private FileSystemManager fsManager;
 	private FileSystemOptions fsOptions;
 	private JSch jsch;
-	private FileObject localDirectory;
 	private Log log;
 
 	public Installer(Log aLog) throws InstallationFatalError {
 		this.log = aLog;
-		String localPath = System.getProperty("user.dir");
-		log.debug("Current path is: " + localPath);
+		initializeFsManager();
+		FileObject localDirectory = openLocalDirectory(System
+				.getProperty("user.dir"));
+		openDependenciesDirectory(localDirectory);
+		loadConfiguration(localDirectory);
+		calculateDependenciesMD5();
+		configureSSH();
+	}
+
+	private void closeInstallationDirectory(FileObject remoteDirectory,
+			Host host) {
+		try {
+			remoteDirectory.close();
+			log.debug("Closed vfs2.sftp connection with: " + host.getHostname());
+		} catch (FileSystemException e) {
+			log.warn(
+					"Error closing vfs2.sftp connection with: "
+							+ host.getHostname(), e);
+		}
+	}
+
+	private void configureSSH() throws InstallationFatalError {
+		fsOptions = new FileSystemOptions();
+		try {
+			SftpFileSystemConfigBuilder builder = SftpFileSystemConfigBuilder
+					.getInstance();
+			// TODO bypass known_hosts from configuration, (yes/no/ask)
+			// builder.setKnownHosts(fsOptions, new File("~/.ssh/known_hosts"));
+			builder.setStrictHostKeyChecking(fsOptions, "no");
+			builder.setUserDirIsRoot(fsOptions, false);
+			File identities[] = new File[1];
+			identities[0] = new File(configuration.sshKeyFile());
+			builder.setIdentities(fsOptions, identities);
+		} catch (FileSystemException e) {
+			throw new InstallationFatalError("Error confiuring vfs2.sftp", e);
+		}
+		log.trace("Configured vfs2.sftp.");
+		try {
+			// TODO: sacar policy de archivo de configuraacion (yes/no/ask).
+			JSch.setConfig("StrictHostKeyChecking", "ask");
+			jsch = new JSch();
+			// JSch.setLogger(new MyLogger());
+			jsch.addIdentity(configuration.sshKeyFile(),
+					configuration.sshKeyFile() + ".pub", null);
+			jsch.setKnownHosts("~/.ssh/known_hosts");
+		} catch (JSchException e) {
+			throw new InstallationFatalError("Error confiuring JSch", e);
+		}
+		log.trace("Configured JSch.");
+	}
+
+	private void initializeFsManager() throws InstallationFatalError {
 		try {
 			fsManager = VFS.getManager();
 		} catch (FileSystemException e) {
 			throw new InstallationFatalError("Error obtaining VFSManager", e);
 		}
+	}
 
+	private void install(Host host) throws InstallationError {
+		FileObject remoteDirectory;
+
+		log.info("Begin Installing " + host.getHostname());
+		Session session = null;
 		try {
-			localDirectory = fsManager.resolveFile(localPath);
-			dependencies = localDirectory.resolveFile("dependencies");
+			session = jsch.getSession(host.getUsername(), host.getHostname(),
+					host.getPort());
+			session.connect();
+			remoteDirectory = openInstallationDirectory(host);
+			try {
+				remoteDirectory.copyFrom(dependencies,
+						new Md5ComparingFileSelector(host, session));
+			} catch (FileSystemException e) {
+				throw new InstallationError(
+						"Error uploading compressed files to "
+								+ remoteDirectory.getName(), e);
+			}
+			log.info("Compressed files uploaded to "
+					+ remoteDirectory.getName());
+
+			uncompressFiles(host, session);
+		} catch (JSchException e) {
+			throw new InstallationError("Error when connecting to "
+					+ host.getHostname(), e);
 		} catch (FileSystemException e) {
-			throw new InstallationFatalError(
-					"Could not resolve 'dependencies' which contains the compressed files to be copied. (Should be in the execution folder)",
+			throw new InstallationError("Error obtaining files to uncompress.",
 					e);
+		} catch (ExecutionError e) {
+			throw new InstallationError("Error executing command at "
+					+ host.getHostname(), e);
+		} finally {
+			if (session.isConnected()) {
+				session.disconnect();
+			}
 		}
-		log.debug("Found dependencies directory.");
+		// TODO: pasar archivos de configuracion
+		closeInstallationDirectory(remoteDirectory, host);
+		log.info("Finished Installing " + host.getHostname());
+	}
+
+	private void uncompressFiles(Host host, Session session)
+			throws FileSystemException, ExecutionError {
+		for (FileObject file : dependencies.getChildren()) {
+			String commandString = "cd " + host.getInstallationDirectory()
+					+ "; tar -zxf " + file.getName().getBaseName();
+			SshCommand command = new SshCommand(session);
+			command.execute(commandString);
+			if (!command.getOutput().isEmpty()) {
+				for (String line : command.getOutput()) {
+					log.trace(line);
+				}
+			}
+			if (!command.getError().toString().isEmpty()) {
+				log.warn(command.getError().toString());
+			}
+		}
+	}
+
+	private void loadConfiguration(FileObject localDirectory)
+			throws InstallationFatalError {
 		FileObject configurationFile;
 		try {
 			configurationFile = localDirectory.resolveFile("configuration.xml");
@@ -73,128 +175,68 @@ public class Installer {
 					"Error reading configuration file", e);
 		}
 		log.trace("Parsed configuration file.");
-		fsOptions = new FileSystemOptions();
-		configureSSH();
 	}
 
-	private void configureSSH() throws InstallationFatalError {
+	private void openDependenciesDirectory(FileObject localDirectory)
+			throws InstallationFatalError {
 		try {
-			SftpFileSystemConfigBuilder builder = SftpFileSystemConfigBuilder
-					.getInstance();
-			// TODO bypass known_hosts from configuration, (yes/no/ask)
-			// builder.setKnownHosts(fsOptions, new File("~/.ssh/known_hosts"));
-			builder.setStrictHostKeyChecking(fsOptions, "no");
-			builder.setUserDirIsRoot(fsOptions, false);
-			File identities[] = new File[1];
-			identities[0] = new File(configuration.sshKeyFile());
-			builder.setIdentities(fsOptions, identities);
+			dependencies = localDirectory.resolveFile("dependencies");
 		} catch (FileSystemException e) {
-			throw new InstallationFatalError("Error confiuring VFS.SFTP", e);
+			throw new InstallationFatalError(
+					"Could not resolve 'dependencies' which contains the compressed files to be copied. (Should be in the execution folder)",
+					e);
 		}
-		log.trace("Configured VFS.SFTP.");
-		try {
-			// TODO: sacar policy de archivo de configuraacion (yes/no/ask).
-			JSch.setConfig("StrictHostKeyChecking", "ask");
-			jsch = new JSch();
-			// JSch.setLogger(new MyLogger());
-			jsch.addIdentity(configuration.sshKeyFile(),
-					configuration.sshKeyFile() + ".pub", null);
-			jsch.setKnownHosts("~/.ssh/known_hosts");
-		} catch (JSchException e) {
-			throw new InstallationFatalError("Error confiuring JSch", e);
-		}
-		log.trace("Configured JSch.");
+		log.debug("Found dependencies directory.");
+
 	}
 
-	private void copyCompressedfilesTo(FileObject remoteDirectory)
-			throws InstallationError {
-		boolean doNotCopy = true;
-		// TODO remove debug (slow)
-		if (!doNotCopy) {
+	private void calculateDependenciesMD5() throws InstallationFatalError {
+		// TODO extraer md5 a otro lugar
+		for (String fileType : configuration.getFiles().keySet()) {
+			String fileName = configuration.getFiles().get(fileType);
 			try {
-				// TODO implementar un selector que verifique si ya existen
-				// utilizando un hash del archivo.
-				remoteDirectory.copyFrom(dependencies, new AllFileSelector());
+				FileObject file = dependencies.resolveFile(fileName);
+				if (file.getType().equals(FileType.FILE)) {
+					log.trace("Calculating MD5 of: "
+							+ file.getName().getBaseName());
+					String md5 = calculateMd5Of(file);
+					Md5ComparingFileSelector.getFilesMd5().put(fileName, md5);
+					log.trace("MD5 of: " + file.getName().getBaseName()
+							+ " is " + md5);
+				}
 			} catch (FileSystemException e) {
-				throw new InstallationError(
-						"Error uploading compressed files to "
-								+ remoteDirectory.getName(), e);
+				throw new InstallationFatalError("File " + fileName
+						+ " not found in dependencies folder", e);
 			}
-			log.info("Compressed files uploaded to "
-					+ remoteDirectory.getName());
 		}
 	}
 
-	private void execute(Session session, String command)
-			throws InstallationError {
-
-		ChannelExec channel = null;
+	private String calculateMd5Of(FileObject file)
+			throws InstallationFatalError {
+		DigestInputStream dis;
 		try {
-			channel = (ChannelExec) session.openChannel("exec");
-		} catch (JSchException e) {
-			throw new InstallationError("Error connecting to "
-					+ session.getHost(), e);
-		}
-		log.debug("Executing command: " + command);
-		channel.setInputStream(null);
-		channel.setCommand(command);
-		OutputStream out = new ByteArrayOutputStream();
-		OutputStream err = new ByteArrayOutputStream();
-		channel.setOutputStream(out);
-		channel.setErrStream(err);
-		try {
-			channel.connect();
-			BufferedReader consoleReader = new BufferedReader(
-					new InputStreamReader(channel.getInputStream()));
-			while (!channel.isClosed() || consoleReader.ready()) {
-				if (!consoleReader.ready()) {
-					wait(250);
-				}
-				String line = consoleReader.readLine();
-				if (line != null) {
-					log.trace(line);
-				}
-			}
-		} catch (JSchException | IOException e) {
-			throw new InstallationError("Error while executing: " + command, e);
-		} finally {
-			if (channel.isConnected()) {
-				channel.disconnect();
-			}
-		}
-		if (!out.toString().isEmpty()) {
-			log.trace(out.toString());
-		}
-		if (!err.toString().isEmpty()) {
-			log.warn(err.toString());
-		}
-		if (channel.getExitStatus() == 0) {
-			log.debug("Command executed successfully");
-		} else {
-			log.warn("Command '" + command + "' returned exit status: "
-					+ channel.getExitStatus());
-		}
-	}
-
-	private void install(Host host) throws InstallationError {
-		log.info("Begin Installing " + host.getHostname());
-		FileObject remoteDirectory = installationDirectoryFor(host);
-		log.debug("Established VFS.SFTP connection with: " + host.getHostname());
-		copyCompressedfilesTo(remoteDirectory);
-		uncompressFilesIn(host);
-		// TODO: pasar archivos de configuracion
-		try {
-			remoteDirectory.close();
-			log.debug("Closed VFS.SFTP connection with: " + host.getHostname());
+			dis = new DigestInputStream(file.getContent().getInputStream(),
+					MessageDigest.getInstance("MD5"));
 		} catch (FileSystemException e) {
-			log.warn(
-					"Error closing VFS.SFTP connection with: "
-							+ host.getHostname(), e);
+			throw new InstallationFatalError("Could not read "
+					+ file.getName().getBaseName() + " contents.", e);
+		} catch (NoSuchAlgorithmException e) {
+			throw new InstallationFatalError("MD5 Algorithm not found", e);
 		}
-		log.info("Finished Installing " + host.getHostname());
+		byte[] in = new byte[1024];
+		try {
+			while ((dis.read(in)) > 0)
+				;
+		} catch (IOException e) {
+			throw new InstallationFatalError("Could not calculate MD5 of: "
+					+ file.getName().getBaseName(), e);
+		}
+		String md5 = javax.xml.bind.DatatypeConverter.printHexBinary(
+				dis.getMessageDigest().digest()).toLowerCase();
+		return md5;
 	}
 
-	private FileObject installationDirectoryFor(Host host)
+	private FileObject openInstallationDirectory(Host host)
 			throws InstallationError {
 		FileObject remoteDirectory;
 		try {
@@ -204,10 +246,25 @@ public class Installer {
 			}
 		} catch (FileSystemException | URISyntaxException e) {
 			throw new InstallationError(
-					"Error establishing VFS.SFTP connection with "
+					"Error establishing vfs2.sftp connection with "
 							+ host.getHostname(), e);
 		}
+		log.debug("Established vfs2.sftp connection with: "
+				+ host.getHostname());
 		return remoteDirectory;
+	}
+
+	private FileObject openLocalDirectory(String localPath)
+			throws InstallationFatalError {
+		FileObject localDirectory;
+		try {
+			localDirectory = fsManager.resolveFile(localPath);
+		} catch (FileSystemException e) {
+			throw new InstallationFatalError("Could not open local directory "
+					+ localPath, e);
+		}
+		log.trace("Opened local directory: " + localPath);
+		return localDirectory;
 	}
 
 	public void run() throws InstallationError {
@@ -218,40 +275,8 @@ public class Installer {
 		log.info("Installation Finished");
 	}
 
-	private void uncompressFilesIn(Host host) throws InstallationError {
-		Session session = null;
-		try {
-			session = jsch.getSession(host.getUsername(), host.getHostname(),
-					host.getPort());
-			session.connect();
-
-			for (FileObject file : dependencies.getChildren()) {
-				String command = "cd " + host.getInstallationDirectory()
-						+ "; tar -zxf " + file.getName().getBaseName();
-				execute(session, command);
-			}
-		} catch (FileSystemException e) {
-			throw new InstallationError("Error obtaining files to uncompress.",
-					e);
-		} catch (JSchException e) {
-			throw new InstallationError("Error when connecting to "
-					+ host.getHostname(), e);
-		} finally {
-			if (session != null && session.isConnected()) {
-				session.disconnect();
-			}
-		}
-	}
-
 	private String uriFor(Host host) throws URISyntaxException {
 		return new URI("sftp", host.getUsername(), host.getHostname(), 22,
 				host.getInstallationDirectory(), null, null).toString();
-	}
-
-	private void wait(int time) {
-		try {
-			Thread.sleep(time);
-		} catch (Exception ee) {
-		}
 	}
 }

@@ -13,6 +13,7 @@ import java.util.List;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemManager;
@@ -60,17 +61,16 @@ public class ConfigurationReaderTest {
 		file.close();
 	}
 
-	private String generateTestDTD() {
-		return "<!ELEMENT configuration (defaults,nodes,ssh)>\n"
-				+ "<!ELEMENT defaults (username,installationDirectory)>\n"
-				+ "<!ELEMENT nodes (node+)>\n"
-				+ "<!ELEMENT node (hostname,port?,username?,installationDirectory?)>\n"
-				+ "<!ELEMENT hostname (#PCDATA)>\n"
-				+ "<!ELEMENT port (#PCDATA)>\n"
-				+ "<!ELEMENT username (#PCDATA)>\n"
-				+ "<!ELEMENT installationDirectory (#PCDATA)>\n"
-				+ "<!ELEMENT ssh (sshKeyFile?)>\n"
-				+ "<!ELEMENT sshKeyFile (#PCDATA)>\n";
+	private String generateTestDTD() throws Exception {
+		try {
+			// Code for runtime
+			return IOUtils.toString(ConfigurationReader.class
+					.getResourceAsStream("/resources/configuration.dtd"));
+		} catch (NullPointerException e) {
+			// Code for development
+			return IOUtils.toString(ConfigurationReader.class.getClassLoader()
+					.getResourceAsStream("configuration.dtd"));
+		}
 	}
 
 	private Document generateTestXML() throws ParserConfigurationException {
@@ -119,6 +119,15 @@ public class ConfigurationReaderTest {
 		sshKeyFile.setTextContent("/path/to/key/file");
 		ssh.appendChild(sshKeyFile);
 		configuration.appendChild(ssh);
+
+		Element files = document.createElement("files");
+		Element hadoop = document.createElement("hadoop");
+		hadoop.setTextContent("hadoop.tar.gz");
+		files.appendChild(hadoop);
+		Element java7 = document.createElement("java7");
+		java7.setTextContent("java7.tar.gz");
+		files.appendChild(java7);
+		configuration.appendChild(files);
 		return document;
 	}
 
@@ -129,12 +138,13 @@ public class ConfigurationReaderTest {
 		assertTrue(conf.sshKeyFile().equals("/path/to/key/file"));
 	}
 
-	// @Test
-	// public void testSsshKnownHostsPolicy() throws Exception {
-	// ConfigurationReader reader = new ConfigurationReader();
-	// InstallerConfiguration conf = reader.readFrom(xmlFile, dtdFile);
-	// assertTrue(conf.knownHostsPolicy() instanceof IgnoreSshHostsPolicy);
-	// }
+	@Test
+	public void testFiles() throws Exception {
+		ConfigurationReader reader = new ConfigurationReader();
+		InstallerConfiguration conf = reader.readFrom(xmlFile);
+		assertTrue(conf.getFiles().get("hadoop").equals("hadoop.tar.gz"));
+		assertTrue(conf.getFiles().get("java7").equals("java7.tar.gz"));
+	}
 
 	@Test
 	public void testNodeConfiguration() throws Exception {

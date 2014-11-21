@@ -7,7 +7,7 @@ public class Main {
 	public static void main(String[] args) {
 		Installer installer;
 		SimpleLog log = new SimpleLog("MyLog");
-//		log.setLevel(SimpleLog.LOG_LEVEL_ALL);
+		log.setLevel(SimpleLog.LOG_LEVEL_ALL);
 		try {
 			installer = new Installer(log);
 			installer.run();

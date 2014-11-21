@@ -23,7 +23,8 @@ import org.xml.sax.SAXNotSupportedException;
 import org.xml.sax.SAXParseException;
 
 public class ConfigurationReader {
-
+	// TODO Separar la lectura del xml de la construccion de la configuracion,
+	// recibir dtd por parametro para validar (y pasar al xml)
 	public class ConfigurationReadError extends Exception {
 		private static final long serialVersionUID = -1811782607636476052L;
 
@@ -81,6 +82,17 @@ public class ConfigurationReader {
 					"sshKeyFile").item(0);
 			if (sshKeyFile != null) {
 				conf.sshKeyFile(sshKeyFile.getTextContent());
+			}
+		}
+
+		Element files = (Element) document.getElementsByTagName("files")
+				.item(0);
+
+		for (int i = 0; i < files.getChildNodes().getLength(); i++) {
+			if (files.getChildNodes().item(i).getNodeType() == Node.ELEMENT_NODE) {
+				String key = files.getChildNodes().item(i).getNodeName();
+				String value = files.getChildNodes().item(i).getTextContent();
+				conf.getFiles().put(key, value);
 			}
 		}
 		return conf;
@@ -149,16 +161,22 @@ public class ConfigurationReader {
 							+ "<!DOCTYPE configuration SYSTEM \"configuration.dtd\">",
 					null);
 		}
-		String expectedDtd = "<!ELEMENT configuration (defaults,nodes,ssh)>\n"
-				+ "<!ELEMENT defaults (username,installationDirectory)>\n"
-				+ "<!ELEMENT nodes (node+)>\n"
-				+ "<!ELEMENT node (hostname,port?,username?,installationDirectory?)>\n"
-				+ "<!ELEMENT hostname (#PCDATA)>\n"
-				+ "<!ELEMENT port (#PCDATA)>\n"
-				+ "<!ELEMENT username (#PCDATA)>\n"
-				+ "<!ELEMENT installationDirectory (#PCDATA)>\n"
-				+ "<!ELEMENT ssh (sshKeyFile?)>\n"
-				+ "<!ELEMENT sshKeyFile (#PCDATA)>\n";
+		String expectedDtd;
+		try {
+			try {
+				// Code for runtime
+				expectedDtd = IOUtils.toString(this.getClass()
+						.getResourceAsStream("/resources/configuration.dtd"));
+			} catch (NullPointerException e) {
+				// Code for development
+				expectedDtd = IOUtils.toString(this.getClass().getClassLoader()
+						.getResourceAsStream("configuration.dtd"));
+			}
+		} catch (IOException e) {
+			throw new ConfigurationReadError(
+					"Document DTD 'configuration.dtd\n' not found in the file resources",
+					null);
+		}
 		try {
 			FileObject dtdFile = VFS.getManager().resolveFile(
 					"file:/" + System.getProperty("user.dir")
@@ -166,8 +184,6 @@ public class ConfigurationReader {
 			String content = IOUtils.toString(dtdFile.getContent()
 					.getInputStream(), "UTF-8");
 			if (!content.equals(expectedDtd)) {
-				System.out.println(content);
-				System.out.println(expectedDtd);
 				throw new ConfigurationReadError(
 						"Document DTD 'configuration.dtd\n' does not match the provided dtd\n"
 								+ "Should be: " + expectedDtd, null);

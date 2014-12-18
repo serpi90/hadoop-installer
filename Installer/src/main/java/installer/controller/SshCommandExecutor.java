@@ -1,4 +1,4 @@
-package installer;
+package installer.controller;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
@@ -12,7 +12,7 @@ import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 
-public class SshCommand {
+public class SshCommandExecutor {
 
 	public class ExecutionError extends Exception {
 		private static final long serialVersionUID = -3074472521049628090L;
@@ -28,25 +28,33 @@ public class SshCommand {
 
 	private Session session;
 
-	public SshCommand(Session sshSession) {
+	/**
+	 * @param sshSession
+	 *            the session where the commands will be executed.
+	 */
+	public SshCommandExecutor(Session sshSession) {
 		session = sshSession;
 		output = new LinkedList<String>();
 		error = new ByteArrayOutputStream();
 	}
 
-	public void execute(String command) throws ExecutionError {
+	private void clearBuffers() {
 		try {
 			output.clear();
 			error.flush();
 		} catch (IOException e) {
 		}
-		ChannelExec channel;
-		try {
-			channel = (ChannelExec) session.openChannel("exec");
-		} catch (JSchException e) {
-			throw new ExecutionError(
-					"Error connecting to " + session.getHost(), e);
-		}
+	}
+
+	/**
+	 * @param command
+	 *            the string to execute via ssh
+	 * @throws ExecutionError
+	 *             when execution fails
+	 */
+	public void execute(String command) throws ExecutionError {
+		clearBuffers();
+		ChannelExec channel = openExecChannel();
 		channel.setInputStream(null);
 		channel.setCommand(command);
 		channel.setErrStream(error);
@@ -58,10 +66,7 @@ public class SshCommand {
 				if (!consoleReader.ready()) {
 					wait(250);
 				}
-				String line = consoleReader.readLine();
-				if (line != null) {
-					output.add(line);
-				}
+				output(consoleReader.readLine());
 			}
 		} catch (JSchException | IOException e) {
 			throw new ExecutionError("Error while executing: " + command, e);
@@ -82,6 +87,23 @@ public class SshCommand {
 
 	public List<String> getOutput() {
 		return output;
+	}
+
+	private ChannelExec openExecChannel() throws ExecutionError {
+		ChannelExec channel;
+		try {
+			channel = (ChannelExec) session.openChannel("exec");
+		} catch (JSchException e) {
+			throw new ExecutionError(
+					"Error connecting to " + session.getHost(), e);
+		}
+		return channel;
+	}
+
+	private void output(String line) {
+		if (line != null) {
+			output.add(line);
+		}
 	}
 
 	private void wait(int time) {

@@ -1,4 +1,4 @@
-package installer;
+package installer.model;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -8,11 +8,11 @@ import java.util.Map;
 
 public class InstallerConfiguration {
 
+	private Map<String, String> files;
+
 	List<Host> nodes;
 
 	String sshKeyFile;
-
-	private Map<String, String> files;
 
 	public InstallerConfiguration() {
 		nodes = new LinkedList<Host>();
@@ -20,27 +20,27 @@ public class InstallerConfiguration {
 		files = new HashMap<String, String>(2);
 	}
 
-	public List<Host> nodes() {
-		return nodes;
-	}
-
 	public void addHost(Host node) {
 		nodes.add(node);
+	}
+
+	public Map<String, String> getFiles() {
+		return files;
 	}
 
 	public List<Host> getNodes() {
 		return new ArrayList<Host>(nodes);
 	}
 
-	public void sshKeyFile(String value) {
-		sshKeyFile = value;
+	public List<Host> nodes() {
+		return nodes;
 	}
 
 	public String sshKeyFile() {
 		return sshKeyFile;
 	}
 
-	public Map<String, String> getFiles() {
-		return files;
+	public void sshKeyFile(String value) {
+		sshKeyFile = value;
 	}
 }

@@ -1,16 +1,17 @@
-package installer;
+package installer.controller;
+
+import installer.exception.InstallationError;
+import installer.exception.InstallationFatalError;
 
 import org.apache.commons.logging.impl.SimpleLog;
 
 public class Main {
 
 	public static void main(String[] args) {
-		Installer installer;
 		SimpleLog log = new SimpleLog("MyLog");
 		log.setLevel(SimpleLog.LOG_LEVEL_ALL);
 		try {
-			installer = new Installer(log);
-			installer.run();
+			new Installer(log).run();
 		} catch (InstallationFatalError e) {
 			log.fatal(e.getMessage(), e.getCause());
 		} catch (InstallationError e) {

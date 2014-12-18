@@ -1,13 +1,18 @@
-package installer;
+package installer.controller;
 
-import installer.SshCommand.ExecutionError;
+import installer.controller.SshCommandExecutor.ExecutionError;
+import installer.exception.InstallationError;
+import installer.exception.InstallationFatalError;
+import installer.fileio.ConfigurationReader;
+import installer.fileio.MD5Calculator;
+import installer.fileio.ConfigurationReader.ConfigurationReadError;
+import installer.model.Host;
+import installer.model.InstallerConfiguration;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.security.DigestInputStream;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 import org.apache.commons.logging.Log;
@@ -23,17 +28,14 @@ import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 
-import configurationFiles.ConfigurationReader;
-import configurationFiles.ConfigurationReader.ConfigurationReadError;
-
 public class Installer {
 
 	private InstallerConfiguration configuration;
 	private FileObject dependencies;
 	private FileSystemManager fsManager;
-	private FileSystemOptions fsOptions;
 	private JSch jsch;
 	private Log log;
+	private FileSystemOptions sftpOptions;
 
 	public Installer(Log aLog) throws InstallationFatalError {
 		this.log = aLog;
@@ -43,7 +45,43 @@ public class Installer {
 		openDependenciesDirectory(localDirectory);
 		loadConfiguration(localDirectory);
 		calculateDependenciesMD5();
-		configureSSH();
+		configureVFS2SFTP();
+		configureJSch();
+	}
+
+	private void calculateDependenciesMD5() throws InstallationFatalError {
+		for (String fileType : configuration.getFiles().keySet()) {
+			String fileName = configuration.getFiles().get(fileType);
+			try {
+				FileObject file = dependencies.resolveFile(fileName);
+				if (file.getType().equals(FileType.FILE)) {
+					log.trace("Calculating MD5 of: "
+							+ file.getName().getBaseName());
+					String md5 = calculateMd5Of(file);
+					Md5ComparingFileSelector.getFilesMd5().put(fileName, md5);
+					log.trace("MD5 of: " + file.getName().getBaseName()
+							+ " is " + md5);
+				}
+			} catch (FileSystemException e) {
+				throw new InstallationFatalError("File " + fileName
+						+ " not found in dependencies folder", e);
+			}
+		}
+	}
+
+	private String calculateMd5Of(FileObject file)
+			throws InstallationFatalError {
+		try {
+			return new MD5Calculator().calculateFor(file);
+		} catch (FileSystemException e) {
+			throw new InstallationFatalError("Could not read "
+					+ file.getName().getBaseName() + " contents.", e);
+		} catch (NoSuchAlgorithmException e) {
+			throw new InstallationFatalError("MD5 Algorithm not found", e);
+		} catch (IOException e) {
+			throw new InstallationFatalError("Could not calculate MD5 of: "
+					+ file.getName().getBaseName(), e);
+		}
 	}
 
 	private void closeInstallationDirectory(FileObject remoteDirectory,
@@ -58,22 +96,7 @@ public class Installer {
 		}
 	}
 
-	private void configureSSH() throws InstallationFatalError {
-		fsOptions = new FileSystemOptions();
-		try {
-			SftpFileSystemConfigBuilder builder = SftpFileSystemConfigBuilder
-					.getInstance();
-			// TODO bypass known_hosts from configuration, (yes/no/ask)
-			// builder.setKnownHosts(fsOptions, new File("~/.ssh/known_hosts"));
-			builder.setStrictHostKeyChecking(fsOptions, "no");
-			builder.setUserDirIsRoot(fsOptions, false);
-			File identities[] = new File[1];
-			identities[0] = new File(configuration.sshKeyFile());
-			builder.setIdentities(fsOptions, identities);
-		} catch (FileSystemException e) {
-			throw new InstallationFatalError("Error confiuring vfs2.sftp", e);
-		}
-		log.trace("Configured vfs2.sftp.");
+	private void configureJSch() throws InstallationFatalError {
 		try {
 			// TODO: sacar policy de archivo de configuraacion (yes/no/ask).
 			JSch.setConfig("StrictHostKeyChecking", "ask");
@@ -86,6 +109,32 @@ public class Installer {
 			throw new InstallationFatalError("Error confiuring JSch", e);
 		}
 		log.trace("Configured JSch.");
+	}
+
+	private void configureVFS2SFTP() throws InstallationFatalError {
+		sftpOptions = new FileSystemOptions();
+		try {
+			SftpFileSystemConfigBuilder builder = SftpFileSystemConfigBuilder
+					.getInstance();
+			// TODO bypass known_hosts from configuration, (yes/no/ask)
+			// builder.setKnownHosts(fsOptions, new File("~/.ssh/known_hosts"));
+			builder.setStrictHostKeyChecking(sftpOptions, "no");
+			builder.setUserDirIsRoot(sftpOptions, false);
+			File identities[] = new File[1];
+			identities[0] = new File(configuration.sshKeyFile());
+			builder.setIdentities(sftpOptions, identities);
+		} catch (FileSystemException e) {
+			throw new InstallationFatalError("Error confiuring vfs2.sftp", e);
+		}
+		log.trace("Configured vfs2.sftp.");
+	}
+
+	private Session connectTo(Host host) throws JSchException {
+		Session session;
+		session = jsch.getSession(host.getUsername(), host.getHostname(),
+				host.getPort());
+		session.connect();
+		return session;
 	}
 
 	private void initializeFsManager() throws InstallationFatalError {
@@ -102,9 +151,7 @@ public class Installer {
 		log.info("Begin Installing " + host.getHostname());
 		Session session = null;
 		try {
-			session = jsch.getSession(host.getUsername(), host.getHostname(),
-					host.getPort());
-			session.connect();
+			session = connectTo(host);
 			remoteDirectory = openInstallationDirectory(host);
 			try {
 				remoteDirectory.copyFrom(dependencies,
@@ -135,24 +182,6 @@ public class Installer {
 		// TODO: pasar archivos de configuracion
 		closeInstallationDirectory(remoteDirectory, host);
 		log.info("Finished Installing " + host.getHostname());
-	}
-
-	private void uncompressFiles(Host host, Session session)
-			throws FileSystemException, ExecutionError {
-		for (FileObject file : dependencies.getChildren()) {
-			String commandString = "cd " + host.getInstallationDirectory()
-					+ "; tar -zxf " + file.getName().getBaseName();
-			SshCommand command = new SshCommand(session);
-			command.execute(commandString);
-			if (!command.getOutput().isEmpty()) {
-				for (String line : command.getOutput()) {
-					log.trace(line);
-				}
-			}
-			if (!command.getError().toString().isEmpty()) {
-				log.warn(command.getError().toString());
-			}
-		}
 	}
 
 	private void loadConfiguration(FileObject localDirectory)
@@ -187,60 +216,13 @@ public class Installer {
 					e);
 		}
 		log.debug("Found dependencies directory.");
-
-	}
-
-	private void calculateDependenciesMD5() throws InstallationFatalError {
-		// TODO extraer md5 a otro lugar
-		for (String fileType : configuration.getFiles().keySet()) {
-			String fileName = configuration.getFiles().get(fileType);
-			try {
-				FileObject file = dependencies.resolveFile(fileName);
-				if (file.getType().equals(FileType.FILE)) {
-					log.trace("Calculating MD5 of: "
-							+ file.getName().getBaseName());
-					String md5 = calculateMd5Of(file);
-					Md5ComparingFileSelector.getFilesMd5().put(fileName, md5);
-					log.trace("MD5 of: " + file.getName().getBaseName()
-							+ " is " + md5);
-				}
-			} catch (FileSystemException e) {
-				throw new InstallationFatalError("File " + fileName
-						+ " not found in dependencies folder", e);
-			}
-		}
-	}
-
-	private String calculateMd5Of(FileObject file)
-			throws InstallationFatalError {
-		DigestInputStream dis;
-		try {
-			dis = new DigestInputStream(file.getContent().getInputStream(),
-					MessageDigest.getInstance("MD5"));
-		} catch (FileSystemException e) {
-			throw new InstallationFatalError("Could not read "
-					+ file.getName().getBaseName() + " contents.", e);
-		} catch (NoSuchAlgorithmException e) {
-			throw new InstallationFatalError("MD5 Algorithm not found", e);
-		}
-		byte[] in = new byte[1024];
-		try {
-			while ((dis.read(in)) > 0)
-				;
-		} catch (IOException e) {
-			throw new InstallationFatalError("Could not calculate MD5 of: "
-					+ file.getName().getBaseName(), e);
-		}
-		String md5 = javax.xml.bind.DatatypeConverter.printHexBinary(
-				dis.getMessageDigest().digest()).toLowerCase();
-		return md5;
 	}
 
 	private FileObject openInstallationDirectory(Host host)
 			throws InstallationError {
 		FileObject remoteDirectory;
 		try {
-			remoteDirectory = fsManager.resolveFile(uriFor(host), fsOptions);
+			remoteDirectory = fsManager.resolveFile(uriFor(host), sftpOptions);
 			if (!remoteDirectory.exists()) {
 				remoteDirectory.createFolder();
 			}
@@ -275,8 +257,27 @@ public class Installer {
 		log.info("Installation Finished");
 	}
 
+	private void uncompressFiles(Host host, Session session)
+			throws FileSystemException, ExecutionError {
+		for (FileObject file : dependencies.getChildren()) {
+			String commandString = "cd " + host.getInstallationDirectory()
+					+ "; tar -zxf " + file.getName().getBaseName();
+			SshCommandExecutor command = new SshCommandExecutor(session);
+			command.execute(commandString);
+			if (!command.getOutput().isEmpty()) {
+				for (String line : command.getOutput()) {
+					log.trace(line);
+				}
+			}
+			if (!command.getError().toString().isEmpty()) {
+				log.warn(command.getError().toString());
+			}
+		}
+	}
+
 	private String uriFor(Host host) throws URISyntaxException {
-		return new URI("sftp", host.getUsername(), host.getHostname(), 22,
-				host.getInstallationDirectory(), null, null).toString();
+		return new URI("sftp", host.getUsername(), host.getHostname(),
+				host.getPort(), host.getInstallationDirectory(), null, null)
+				.toString();
 	}
 }

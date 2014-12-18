@@ -1,4 +1,4 @@
-package configurationFiles;
+package installer.fileio;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -13,19 +13,15 @@ import org.apache.commons.vfs2.FileSystemManager;
 
 public class HadoopEnvBuilder {
 
-	Map<String, String> parameters;
 	FileSystemManager fileSystemManager;
 	URI fileUri;
+	Map<String, String> parameters;
 
 	public HadoopEnvBuilder(FileSystemManager aFileSystemManager,
 			URI targetFileUri) {
 		fileSystemManager = aFileSystemManager;
 		fileUri = targetFileUri;
 		parameters = new HashMap<String, String>();
-	}
-
-	public void setJavaHome(String string) {
-		parameters.put("JAVA_HOME", string);
 	}
 
 	public void build() throws IOException {
@@ -43,6 +39,10 @@ public class HadoopEnvBuilder {
 
 	public void setHadoopPrefix(String string) {
 		parameters.put("HADOOP_PREFIX", string);
+	}
+
+	public void setJavaHome(String string) {
+		parameters.put("JAVA_HOME", string);
 	}
 
 }

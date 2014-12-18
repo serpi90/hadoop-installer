@@ -1,8 +1,10 @@
-package installer;
+package installer.controller;
 
-import installer.SshCommand.ExecutionError;
+import installer.controller.SshCommandExecutor.ExecutionError;
+import installer.model.Host;
 
 import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.commons.vfs2.FileSelectInfo;
 import org.apache.commons.vfs2.FileSelector;
@@ -11,9 +13,7 @@ import com.jcraft.jsch.Session;
 
 public class Md5ComparingFileSelector implements FileSelector {
 
-	private Session session;
 	private static HashMap<String, String> filesMd5;
-	private Host host;
 
 	public static HashMap<String, String> getFilesMd5() {
 		if (filesMd5 == null) {
@@ -22,11 +22,13 @@ public class Md5ComparingFileSelector implements FileSelector {
 		return filesMd5;
 	}
 
+	private Host host;
+
+	private Session session;
+
 	public Md5ComparingFileSelector(Host host, Session session) {
 		this.session = session;
 		this.host = host;
-		// TODO calcular al iniciar y obtener lista de archivo de configuracion.
-
 	}
 
 	@Override
@@ -34,10 +36,11 @@ public class Md5ComparingFileSelector implements FileSelector {
 		if (fileInfo.getBaseFolder().equals(fileInfo.getFile())) {
 			return true;
 		}
+		Map<String, String> filesMd5 = Md5ComparingFileSelector.getFilesMd5();
 		String fileName = fileInfo.getFile().getName().getBaseName();
 		if (filesMd5.containsKey(fileName)) {
 
-			SshCommand md5Command = new SshCommand(session);
+			SshCommandExecutor md5Command = new SshCommandExecutor(session);
 
 			try {
 				md5Command.execute("cd " + host.getInstallationDirectory()

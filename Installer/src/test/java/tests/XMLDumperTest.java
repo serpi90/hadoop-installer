@@ -1,6 +1,8 @@
 package tests;
 
 import static org.junit.Assert.assertTrue;
+import installer.fileio.ConfigurationXMLBuilder;
+import installer.fileio.XMLFileWriter;
 
 import java.net.URI;
 
@@ -11,14 +13,11 @@ import org.junit.Before;
 import org.junit.Test;
 import org.w3c.dom.Document;
 
-import configurationFiles.ConfigurationXMLBuilder;
-import configurationFiles.XMLFileWriter;
-
 public class XMLDumperTest {
 
-	private FileSystemManager mgr;
 	private URI baseUri;
 	private URI fileURI;
+	private FileSystemManager mgr;
 
 	@Before
 	public void setUp() throws Exception {

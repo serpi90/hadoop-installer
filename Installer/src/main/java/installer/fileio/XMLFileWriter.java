@@ -1,4 +1,4 @@
-package configurationFiles;
+package installer.fileio;
 
 import java.io.IOException;
 import java.io.PrintWriter;

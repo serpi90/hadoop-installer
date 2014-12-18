@@ -1,6 +1,6 @@
-package configurationFiles;
+package installer.fileio;
 
-import installer.Property;
+import installer.model.Property;
 
 import java.util.HashSet;
 import java.util.Set;

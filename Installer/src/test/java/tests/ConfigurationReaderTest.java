@@ -2,8 +2,11 @@ package tests;
 
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import installer.Host;
-import installer.InstallerConfiguration;
+import installer.fileio.ConfigurationReader;
+import installer.fileio.XMLFileWriter;
+import installer.fileio.ConfigurationReader.ConfigurationReadError;
+import installer.model.Host;
+import installer.model.InstallerConfiguration;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -25,41 +28,9 @@ import org.w3c.dom.Document;
 import org.w3c.dom.DocumentType;
 import org.w3c.dom.Element;
 
-import configurationFiles.ConfigurationReader;
-import configurationFiles.ConfigurationReader.ConfigurationReadError;
-import configurationFiles.XMLFileWriter;
-
 public class ConfigurationReaderTest {
-	private FileObject xmlFile;
 	private FileObject dtdFile;
-
-	@Before
-	public void setUp() {
-		try {
-			FileSystemManager fsManager = VFS.getManager();
-			xmlFile = fsManager.resolveFile("ram://test.xml");
-			Document document = generateTestXML();
-			new XMLFileWriter().saveToFile(xmlFile, document);
-			dtdFile = VFS.getManager().resolveFile(
-					"file:/" + System.getProperty("user.dir") + "/test.dtd");
-			dtdFile.exists();
-			writeFile(dtdFile, generateTestDTD());
-		} catch (Exception e) {
-			e.printStackTrace(System.err);
-		}
-	}
-
-	@After
-	public void tearDown() throws FileSystemException {
-		dtdFile.delete();
-	}
-
-	private void writeFile(FileObject file, String content) throws IOException {
-		Writer writer = new PrintWriter(file.getContent().getOutputStream());
-		writer.write(content);
-		writer.close();
-		file.close();
-	}
+	private FileObject xmlFile;
 
 	private String generateTestDTD() throws Exception {
 		try {
@@ -131,11 +102,55 @@ public class ConfigurationReaderTest {
 		return document;
 	}
 
+	private String generateXMLInvalidAgainstDTD() {
+		return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+				+ "<!DOCTYPE configuration SYSTEM \"test.dtd\">"
+				+ "<configuration>"
+				+ "    <defaults>"
+				+ "        <username>hadoop</username>"
+				+ "        <installationDirectory>/home/hadoop/hadoop</installationDirectory>"
+				+ "    </defaults>" + "    <nodes>" + "        <node>"
+				+ "            <hostnames>lir-s-241</hostnames>"
+				+ "        </node>" + "        <node>"
+				+ "            <hostname>lir-s-242</hostname>"
+				+ "        </node>" + "        <node>"
+				+ "            <hostname>lir-s-243</hostname>"
+				+ "        </node>" + "        <node>"
+				+ "            <hostname>lir-s-244</hostname>"
+				+ "        </node>" + "    </nodes>" + "</configuration>";
+	}
+
+	@Before
+	public void setUp() {
+		try {
+			FileSystemManager fsManager = VFS.getManager();
+			xmlFile = fsManager.resolveFile("ram://test.xml");
+			Document document = generateTestXML();
+			new XMLFileWriter().saveToFile(xmlFile, document);
+			dtdFile = VFS.getManager().resolveFile(
+					"file:/" + System.getProperty("user.dir") + "/test.dtd");
+			dtdFile.exists();
+			writeFile(dtdFile, generateTestDTD());
+		} catch (Exception e) {
+			e.printStackTrace(System.err);
+		}
+	}
+
+	@After
+	public void tearDown() throws FileSystemException {
+		dtdFile.delete();
+	}
+
 	@Test
-	public void testSshKeyFile() throws Exception {
+	public void testFileNotValidAgainstDTD() throws Exception {
 		ConfigurationReader reader = new ConfigurationReader();
-		InstallerConfiguration conf = reader.readFrom(xmlFile);
-		assertTrue(conf.sshKeyFile().equals("/path/to/key/file"));
+		try {
+			writeFile(xmlFile, generateXMLInvalidAgainstDTD());
+			reader.readFrom(xmlFile);
+			fail();
+		} catch (ConfigurationReadError e) {
+			assertTrue(true);
+		}
 	}
 
 	@Test
@@ -167,33 +182,17 @@ public class ConfigurationReaderTest {
 
 	}
 
-	private String generateXMLInvalidAgainstDTD() {
-		return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
-				+ "<!DOCTYPE configuration SYSTEM \"test.dtd\">"
-				+ "<configuration>"
-				+ "    <defaults>"
-				+ "        <username>hadoop</username>"
-				+ "        <installationDirectory>/home/hadoop/hadoop</installationDirectory>"
-				+ "    </defaults>" + "    <nodes>" + "        <node>"
-				+ "            <hostnames>lir-s-241</hostnames>"
-				+ "        </node>" + "        <node>"
-				+ "            <hostname>lir-s-242</hostname>"
-				+ "        </node>" + "        <node>"
-				+ "            <hostname>lir-s-243</hostname>"
-				+ "        </node>" + "        <node>"
-				+ "            <hostname>lir-s-244</hostname>"
-				+ "        </node>" + "    </nodes>" + "</configuration>";
+	@Test
+	public void testSshKeyFile() throws Exception {
+		ConfigurationReader reader = new ConfigurationReader();
+		InstallerConfiguration conf = reader.readFrom(xmlFile);
+		assertTrue(conf.sshKeyFile().equals("/path/to/key/file"));
 	}
 
-	@Test
-	public void testFileNotValidAgainstDTD() throws Exception {
-		ConfigurationReader reader = new ConfigurationReader();
-		try {
-			writeFile(xmlFile, generateXMLInvalidAgainstDTD());
-			reader.readFrom(xmlFile);
-			fail();
-		} catch (ConfigurationReadError e) {
-			assertTrue(true);
-		}
+	private void writeFile(FileObject file, String content) throws IOException {
+		Writer writer = new PrintWriter(file.getContent().getOutputStream());
+		writer.write(content);
+		writer.close();
+		file.close();
 	}
 }

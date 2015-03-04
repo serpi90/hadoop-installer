@@ -1,4 +1,4 @@
-package installer.fileio;
+package installer.md5;
 
 import java.io.IOException;
 import java.security.DigestInputStream;

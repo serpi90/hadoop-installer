@@ -28,6 +28,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.DocumentType;
 import org.w3c.dom.Element;
 
+@SuppressWarnings("nls")
 public class ConfigurationReaderTest {
 	private FileObject dtdFile;
 	private FileObject xmlFile;

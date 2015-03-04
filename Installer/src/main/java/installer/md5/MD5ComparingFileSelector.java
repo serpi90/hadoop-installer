@@ -1,18 +1,20 @@
-package installer;
+package installer.md5;
 
+import installer.SshCommandExecutor;
 import installer.SshCommandExecutor.ExecutionError;
 import installer.model.Host;
 
 import java.text.MessageFormat;
 import java.util.HashMap;
-import java.util.Map;
+import java.util.Observable;
 
 import org.apache.commons.vfs2.FileSelectInfo;
 import org.apache.commons.vfs2.FileSelector;
 
 import com.jcraft.jsch.Session;
 
-public class Md5ComparingFileSelector implements FileSelector {
+public class MD5ComparingFileSelector extends Observable implements
+		FileSelector {
 
 	private static HashMap<String, String> filesMd5;
 
@@ -27,19 +29,20 @@ public class Md5ComparingFileSelector implements FileSelector {
 
 	private Session session;
 
-	public Md5ComparingFileSelector(Host host, Session session) {
+	public MD5ComparingFileSelector(Host host, Session session) {
 		this.session = session;
 		this.host = host;
 	}
 
 	@Override
 	public boolean includeFile(FileSelectInfo fileInfo) {
+		// The base folder should be included.
 		if (fileInfo.getBaseFolder().equals(fileInfo.getFile())) {
 			return true;
 		}
-		Map<String, String> filesMd5 = Md5ComparingFileSelector.getFilesMd5();
+		setChanged();
 		String fileName = fileInfo.getFile().getName().getBaseName();
-		if (filesMd5.containsKey(fileName)) {
+		if (MD5ComparingFileSelector.getFilesMd5().containsKey(fileName)) {
 
 			SshCommandExecutor md5Command = new SshCommandExecutor(session);
 
@@ -48,18 +51,32 @@ public class Md5ComparingFileSelector implements FileSelector {
 						"cd {0}; md5sum --binary {1} | grep -o ''^[0-9a-f]*''", //$NON-NLS-1$
 						host.getInstallationDirectory(), fileName));
 			} catch (ExecutionError e) {
+				notifyObservers(new Result(true, fileName,
+						Reason.COULD_NOT_CALCULATE_MD5, md5Command.getError()
+								.toString()));
 				return true;
 			}
 			String md5 = md5Command.getOutput().get(0);
-			return !filesMd5.get(fileName).equals(md5);
+			if (MD5ComparingFileSelector.getFilesMd5().get(fileName)
+					.equals(md5)) {
+				notifyObservers(new Result(false, fileName, Reason.MD5_MATCHES));
+				return false;
+			} else {
+				notifyObservers(new Result(true, fileName,
+						Reason.MD5_DOES_NOT_MATCH));
+				return true;
+			}
 		}
 
+		notifyObservers(new Result(false, fileName,
+				Reason.FILE_NOT_IN_UPLOAD_LIST));
 		return false;
 	}
 
 	@Override
 	public boolean traverseDescendents(FileSelectInfo fileInfo)
 			throws Exception {
+		// Only copy the base folder contents, not it's sub-directories.
 		return fileInfo.getBaseFolder().equals(fileInfo.getFile());
 	}
 

@@ -5,7 +5,9 @@ import installer.exception.InstallationError;
 import installer.exception.InstallationFatalError;
 import installer.fileio.ConfigurationReader;
 import installer.fileio.ConfigurationReader.ConfigurationReadError;
-import installer.fileio.MD5Calculator;
+import installer.md5.MD5Calculator;
+import installer.md5.MD5ComparingFileSelector;
+import installer.md5.MD5ComparingObserver;
 import installer.model.Host;
 import installer.model.InstallerConfiguration;
 
@@ -39,6 +41,7 @@ public class Installer {
 	private JSch jsch;
 	private Log log;
 	private FileSystemOptions sftpOptions;
+	private MD5ComparingObserver md5Observer;
 
 	public Installer(Log aLog) throws InstallationFatalError {
 		setLog(aLog);
@@ -52,30 +55,9 @@ public class Installer {
 		configureJSch();
 		getLog().info(
 				Messages.getString("Installer.VerifyingInstallationFiles")); //$NON-NLS-1$
+		this.md5Observer = new MD5ComparingObserver(getLog());
 		calculateDependenciesMD5();
 		obtainDependenciesPath(localDirectoryPath);
-	}
-
-	private void obtainDependenciesPath(String localDirectory) {
-		for (String fileType : configuration.getFiles().keySet()) {
-			String fileName = configuration.getFiles().get(fileType);
-			try {
-				String path = MessageFormat.format(
-						"tgz://{0}/dependencies/{1}", localDirectory, fileName); //$NON-NLS-1$
-				FileName fname = fsManager.resolveFile(path).getChildren()[0]
-						.getName();
-				String message = MessageFormat
-						.format(Messages.getString("Installer.DirectoryOfIs"), fileType, //$NON-NLS-1$
-								fname.getBaseName());
-				getLog().trace(message);
-			} catch (FileSystemException e) {
-				String message = MessageFormat.format(Messages
-						.getString("Installer.CouldNotOpenDependencyFile"), //$NON-NLS-1$
-						fileType, fileName);
-				getLog().error(message, e);
-			}
-		}
-
 	}
 
 	private void calculateDependenciesMD5() throws InstallationFatalError {
@@ -89,7 +71,7 @@ public class Installer {
 									.getString("Installer.CalculatingMD5Of"), //$NON-NLS-1$
 									file.getName().getBaseName()));
 					String md5 = calculateMd5Of(file);
-					Md5ComparingFileSelector.getFilesMd5().put(fileName, md5);
+					MD5ComparingFileSelector.getFilesMd5().put(fileName, md5);
 					getLog().trace(
 							MessageFormat.format(
 									Messages.getString("Installer.MD5OfIs"), file //$NON-NLS-1$
@@ -187,6 +169,13 @@ public class Installer {
 		return session;
 	}
 
+	private Log getLog() {
+		if (this.log == null) {
+			setLog(new SimpleLog(Messages.getString("Installer.DefaultLogName"))); //$NON-NLS-1$
+		}
+		return log;
+	}
+
 	private void initializeFsManager() throws InstallationFatalError {
 		try {
 			fsManager = VFS.getManager();
@@ -205,25 +194,8 @@ public class Installer {
 		Session session = null;
 		try {
 			session = connectTo(host);
-			remoteDirectory = openInstallationDirectory(host);
-			try {
-				remoteDirectory.copyFrom(dependencies,
-						new Md5ComparingFileSelector(host, session));
-			} catch (FileSystemException e) {
-				throw new InstallationError(MessageFormat.format(Messages
-						.getString("Installer.ErrorUploadingcompressedFiles"), //$NON-NLS-1$
-						remoteDirectory.getName()), e);
-			}
-			getLog().info(
-					MessageFormat.format(Messages
-							.getString("Installer.CompressedFilesUploadedTo"), //$NON-NLS-1$
-							remoteDirectory.getName()));
-
+			remoteDirectory = uploadFiles(host, session);
 			uncompressFiles(host, session);
-			getLog().info(
-					MessageFormat.format(
-							Messages.getString("Installer.UncompresseedUploadedFilesIn"), //$NON-NLS-1$
-							host.getHostname()));
 
 		} catch (JSchException e) {
 			throw new InstallationError(
@@ -266,6 +238,28 @@ public class Installer {
 					Messages.getString("Installer.ErrorReadingConfigurationFile"), e); //$NON-NLS-1$
 		}
 		getLog().trace(Messages.getString("Installer.ParsedConfigurationFile")); //$NON-NLS-1$
+	}
+
+	private void obtainDependenciesPath(String localDirectory) {
+		for (String fileType : configuration.getFiles().keySet()) {
+			String fileName = configuration.getFiles().get(fileType);
+			try {
+				String path = MessageFormat.format(
+						"tgz://{0}/dependencies/{1}", localDirectory, fileName); //$NON-NLS-1$
+				FileName fname = fsManager.resolveFile(path).getChildren()[0]
+						.getName();
+				String message = MessageFormat
+						.format(Messages.getString("Installer.DirectoryOfIs"), fileType, //$NON-NLS-1$
+								fname.getBaseName());
+				getLog().trace(message);
+			} catch (FileSystemException e) {
+				String message = MessageFormat.format(Messages
+						.getString("Installer.CouldNotOpenDependencyFile"), //$NON-NLS-1$
+						fileType, fileName);
+				getLog().error(message, e);
+			}
+		}
+
 	}
 
 	private void openDependenciesDirectory(FileObject localDirectory)
@@ -328,8 +322,16 @@ public class Installer {
 		getLog().info(Messages.getString("Installer.InstallationFinished")); //$NON-NLS-1$
 	}
 
+	private void setLog(Log log) {
+		this.log = log;
+	}
+
 	private void uncompressFiles(Host host, Session session)
 			throws FileSystemException, InstallationError {
+		getLog().info(
+				MessageFormat.format(Messages
+						.getString("Installer.UncompressingUploadedFilesIn"), //$NON-NLS-1$
+						host.getHostname()));
 		for (FileObject file : dependencies.getChildren()) {
 			String commandString = MessageFormat
 					.format("cd {0}; tar -zxf {1}", host.getInstallationDirectory(), file.getName().getBaseName()); //$NON-NLS-1$
@@ -347,22 +349,37 @@ public class Installer {
 						host.getHostname()), e);
 			}
 		}
+		getLog().info(
+				MessageFormat.format(Messages
+						.getString("Installer.UncompresseedUploadedFilesIn"), //$NON-NLS-1$
+						host.getHostname()));
+	}
+
+	private FileObject uploadFiles(Host host, Session session)
+			throws InstallationError {
+		FileObject remoteDirectory;
+		remoteDirectory = openInstallationDirectory(host);
+		try {
+			MD5ComparingFileSelector selector = new MD5ComparingFileSelector(
+					host, session);
+			selector.addObserver(md5Observer);
+			remoteDirectory.copyFrom(dependencies, selector);
+			selector.deleteObserver(md5Observer);
+		} catch (FileSystemException e) {
+			throw new InstallationError(MessageFormat.format(Messages
+					.getString("Installer.ErrorUploadingcompressedFiles"), //$NON-NLS-1$
+					remoteDirectory.getName()), e);
+		}
+		getLog().info(
+				MessageFormat.format(Messages
+						.getString("Installer.CompressedFilesUploadedTo"), //$NON-NLS-1$
+						remoteDirectory.getName()));
+		return remoteDirectory;
 	}
 
 	private String uriFor(Host host) throws URISyntaxException {
 		return new URI("sftp", host.getUsername(), host.getHostname(), //$NON-NLS-1$
 				host.getPort(), host.getInstallationDirectory(), null, null)
 				.toString();
-	}
-
-	private Log getLog() {
-		if (this.log == null) {
-			setLog(new SimpleLog(Messages.getString("Installer.DefaultLogName"))); //$NON-NLS-1$
-		}
-		return log;
-	}
-
-	private void setLog(Log log) {
-		this.log = log;
 	}
 }

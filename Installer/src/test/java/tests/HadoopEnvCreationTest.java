@@ -21,6 +21,7 @@ import org.junit.Test;
  * @author julian
  * 
  */
+@SuppressWarnings("nls")
 public class HadoopEnvCreationTest {
 
 	URI baseUri;

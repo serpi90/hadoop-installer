@@ -9,11 +9,12 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 
+@SuppressWarnings("nls")
 public class ConfigurationXMLBuilderTest {
 
 	@Before
 	public void setUp() {
-
+		// Nothing to do here.
 	}
 
 	@Test

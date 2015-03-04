@@ -3,3 +3,5 @@
 dependencies
 /test.dtd
 /doc
+/configuration.dtd
+/configuration.xml

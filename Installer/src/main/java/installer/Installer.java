@@ -234,11 +234,6 @@ public class Installer {
 			throw new InstallationError(
 					Messages.getString("Installer.ErrorObtainingFIlesToUncompress"), //$NON-NLS-1$
 					e);
-		} catch (ExecutionError e) {
-			throw new InstallationError(
-					MessageFormat
-							.format(Messages
-									.getString("Installer.ErrorExecutingCommandAt"), host.getHostname()), e); //$NON-NLS-1$
 		} finally {
 			if (session != null && session.isConnected()) {
 				session.disconnect();
@@ -334,19 +329,22 @@ public class Installer {
 	}
 
 	private void uncompressFiles(Host host, Session session)
-			throws FileSystemException, ExecutionError {
+			throws FileSystemException, InstallationError {
 		for (FileObject file : dependencies.getChildren()) {
 			String commandString = MessageFormat
 					.format("cd {0}; tar -zxf {1}", host.getInstallationDirectory(), file.getName().getBaseName()); //$NON-NLS-1$
 			SshCommandExecutor command = new SshCommandExecutor(session);
-			command.execute(commandString);
-			if (!command.getOutput().isEmpty()) {
-				for (String line : command.getOutput()) {
-					getLog().trace(line);
+			try {
+				command.execute(commandString);
+				if (!command.getOutput().isEmpty()) {
+					for (String line : command.getOutput()) {
+						getLog().trace(line);
+					}
 				}
-			}
-			if (!command.getError().toString().isEmpty()) {
-				getLog().warn(command.getError().toString());
+			} catch (ExecutionError e) {
+				throw new InstallationError(MessageFormat.format(Messages
+						.getString("Installer.CommandExecutionFailedAt"), //$NON-NLS-1$
+						host.getHostname()), e);
 			}
 		}
 	}

@@ -77,17 +77,20 @@ public class SshCommandExecutor {
 				output(consoleReader.readLine());
 			}
 		} catch (JSchException | IOException e) {
-			throw new ExecutionError(MessageFormat.format(
-					Messages.getString("SshCommandExecutor.ErrorWhileExecuting"), command), e); //$NON-NLS-1$
+			throw new ExecutionError(
+					MessageFormat
+							.format(Messages
+									.getString("SshCommandExecutor.ErrorWhileExecuting"), command), e); //$NON-NLS-1$
 		} finally {
 			if (channel.isConnected()) {
 				channel.disconnect();
 			}
 		}
 		if (channel.getExitStatus() != 0) {
-			throw new ExecutionError(MessageFormat.format(
-					Messages.getString("SshCommandExecutor.CommandReturnedStatus"), command, //$NON-NLS-1$
-					channel.getExitStatus()), null);
+			throw new ExecutionError(
+					MessageFormat.format(
+							Messages.getString("SshCommandExecutor.CommandReturnedStatus"), command, //$NON-NLS-1$
+							channel.getExitStatus()), null);
 		}
 	}
 
@@ -104,8 +107,10 @@ public class SshCommandExecutor {
 		try {
 			channel = (ChannelExec) session.openChannel("exec"); //$NON-NLS-1$
 		} catch (JSchException e) {
-			throw new ExecutionError(MessageFormat.format(
-					Messages.getString("SshCommandExecutor.ErrorConnectingTo"), session.getHost()), e); //$NON-NLS-1$
+			throw new ExecutionError(
+					MessageFormat
+							.format(Messages
+									.getString("SshCommandExecutor.ErrorConnectingTo"), session.getHost()), e); //$NON-NLS-1$
 		}
 		return channel;
 	}

@@ -10,6 +10,10 @@ For developement, please add the src/main folder to your classpath.
 
 ## Runtime
 
+Run with `java -jar HadoopInstaller.jar [-log:<level>]`
+
+Where level is any of: all,off,trace,debug,info,warn,error,fatal. Defaults to *info*.
+
 ### Set Up ###
 
 #### Requires ####
@@ -21,7 +25,6 @@ For developement, please add the src/main folder to your classpath.
 #### Setup summary ####
 * Put the hadoop and java bundles in the `dependencies` directory.
 * Configure the installer using the `configuration.xml` file.
-* `java -jar HadoopInstaller.jar`
 
 ## Contact ###
 

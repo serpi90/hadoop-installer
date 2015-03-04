@@ -170,15 +170,9 @@ public class ConfigurationReader {
 		}
 		String expectedDtd;
 		try {
-			try {
-				// Code for runtime
-				expectedDtd = IOUtils.toString(this.getClass()
-						.getResourceAsStream("/resources/" + dtdFileName)); //$NON-NLS-1$
-			} catch (NullPointerException e) {
-				// Code for development
-				expectedDtd = IOUtils.toString(this.getClass().getClassLoader()
-						.getResourceAsStream(dtdFileName));
-			}
+			expectedDtd = IOUtils.toString(this.getClass().getResourceAsStream(
+					"/resources/" + dtdFileName)); //$NON-NLS-1$
+
 		} catch (IOException e) {
 			throw new ConfigurationReadError(MessageFormat.format(Messages
 					.getString("ConfigurationReader.DTDResourceNotFound"), //$NON-NLS-1$

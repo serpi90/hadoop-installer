@@ -42,22 +42,23 @@ public class Installer {
 
 	public Installer(Log aLog) throws InstallationFatalError {
 		setLog(aLog);
+		getLog().info(Messages.getString("Installer.ConfiguringInstaller")); //$NON-NLS-1$
 		initializeFsManager();
 		String localDirectoryPath = System.getProperty("user.dir"); //$NON-NLS-1$
 		FileObject localDirectory = openLocalDirectory(localDirectoryPath);
 		openDependenciesDirectory(localDirectory);
 		loadConfiguration(localDirectory);
-		calculateDependenciesMD5();
-		obtainDependenciesPath(localDirectoryPath);
 		configureVFS2SFTP();
 		configureJSch();
+		getLog().info(
+				Messages.getString("Installer.VerifyingInstallationFiles")); //$NON-NLS-1$
+		calculateDependenciesMD5();
+		obtainDependenciesPath(localDirectoryPath);
 	}
 
 	private void obtainDependenciesPath(String localDirectory) {
 		for (String fileType : configuration.getFiles().keySet()) {
 			String fileName = configuration.getFiles().get(fileType);
-			System.out.println(fileType);
-			System.out.println(fileName);
 			try {
 				String path = MessageFormat.format(
 						"tgz://{0}/dependencies/{1}", localDirectory, fileName); //$NON-NLS-1$
@@ -358,10 +359,7 @@ public class Installer {
 
 	private Log getLog() {
 		if (this.log == null) {
-			SimpleLog newLog = new SimpleLog(
-					Messages.getString("Installer.DefaultLogName")); //$NON-NLS-1$
-			newLog.setLevel(SimpleLog.LOG_LEVEL_ALL);
-			setLog(newLog);
+			setLog(new SimpleLog(Messages.getString("Installer.DefaultLogName"))); //$NON-NLS-1$
 		}
 		return log;
 	}

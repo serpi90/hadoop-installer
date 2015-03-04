@@ -143,7 +143,7 @@ public class Installer {
 
 	private void configureJSch() throws InstallationFatalError {
 		try {
-			// TODO: sacar policy de archivo de configuraacion (yes/no/ask).
+			// TODO sacar policy de archivo de configuraacion (yes/no/ask).
 			JSch.setConfig("StrictHostKeyChecking", "ask"); //$NON-NLS-1$//$NON-NLS-2$
 			jsch = new JSch();
 			// JSch.setLogger(new MyLogger());
@@ -162,8 +162,8 @@ public class Installer {
 		try {
 			SftpFileSystemConfigBuilder builder = SftpFileSystemConfigBuilder
 					.getInstance();
-			// TODO bypass known_hosts from configuration, (yes/no/ask)
-			// TODO get known hosts directory from configuration (absolute)
+			// TODO- bypass known_hosts from configuration, (yes/no/ask)
+			// TODO- get known hosts directory from configuration (absolute)
 			builder.setKnownHosts(sftpOptions,
 					new File(System.getProperty("user.home") //$NON-NLS-1$
 							+ "/.ssh/known_hosts")); //$NON-NLS-1$
@@ -239,7 +239,7 @@ public class Installer {
 				session.disconnect();
 			}
 		}
-		// TODO: pasar archivos de configuracion
+		// TODO! pasar archivos de configuracion
 		closeInstallationDirectory(remoteDirectory, host);
 		getLog().info(
 				Messages.getString("Installer.FinishedInstalling") + host.getHostname()); //$NON-NLS-1$

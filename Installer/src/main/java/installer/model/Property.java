@@ -7,7 +7,7 @@ public class Property {
 	public Property(String aName, String aValue) {
 		name = aName.trim();
 		value = aValue.trim();
-		description = "";
+		description = new String();
 	}
 
 	public Property(String aName, String aValue, String aDescription) {

@@ -22,10 +22,11 @@ public class MD5Calculator {
 			throws NoSuchAlgorithmException, IOException {
 		DigestInputStream dis;
 		dis = new DigestInputStream(file.getContent().getInputStream(),
-				MessageDigest.getInstance("MD5"));
+				MessageDigest.getInstance("MD5")); //$NON-NLS-1$
 		byte[] in = new byte[1024];
-		while ((dis.read(in)) > 0)
-			;
+		while ((dis.read(in)) > 0) {
+			// Read until there's nothing left.
+		}
 		String md5 = javax.xml.bind.DatatypeConverter.printHexBinary(
 				dis.getMessageDigest().digest()).toLowerCase();
 		return md5;

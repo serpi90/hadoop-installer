@@ -16,7 +16,7 @@ public class InstallerConfiguration {
 
 	public InstallerConfiguration() {
 		nodes = new LinkedList<Host>();
-		sshKeyFile = System.getProperty("user.home") + "/.ssh/id_rsa";
+		sshKeyFile = System.getProperty("user.home") + "/.ssh/id_rsa"; //$NON-NLS-1$//$NON-NLS-2$
 		files = new HashMap<String, String>(2);
 	}
 

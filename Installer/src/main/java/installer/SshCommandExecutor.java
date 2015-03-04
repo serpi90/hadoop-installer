@@ -1,10 +1,11 @@
-package installer.controller;
+package installer;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.text.MessageFormat;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -43,6 +44,13 @@ public class SshCommandExecutor {
 			output.clear();
 			error.flush();
 		} catch (IOException e) {
+			/*
+			 * Buffers should not throw an exception because they are created
+			 * and maintained internally.
+			 * 
+			 * If any of them fails, we are probably getting out of memory, and
+			 * the problems are likely to show up elsewhere.
+			 */
 		}
 	}
 
@@ -64,20 +72,22 @@ public class SshCommandExecutor {
 					new InputStreamReader(channel.getInputStream()));
 			while (!channel.isClosed() || consoleReader.ready()) {
 				if (!consoleReader.ready()) {
-					wait(250);
+					doWait();
 				}
 				output(consoleReader.readLine());
 			}
 		} catch (JSchException | IOException e) {
-			throw new ExecutionError("Error while executing: " + command, e);
+			throw new ExecutionError(MessageFormat.format(
+					Messages.getString("SshCommandExecutor.ErrorWhileExecuting"), command), e); //$NON-NLS-1$
 		} finally {
 			if (channel.isConnected()) {
 				channel.disconnect();
 			}
 		}
 		if (channel.getExitStatus() != 0) {
-			throw new ExecutionError("Command '" + command
-					+ "' returned  status: " + channel.getExitStatus(), null);
+			throw new ExecutionError(MessageFormat.format(
+					Messages.getString("SshCommandExecutor.CommandReturnedStatus"), command, //$NON-NLS-1$
+					channel.getExitStatus()), null);
 		}
 	}
 
@@ -92,10 +102,10 @@ public class SshCommandExecutor {
 	private ChannelExec openExecChannel() throws ExecutionError {
 		ChannelExec channel;
 		try {
-			channel = (ChannelExec) session.openChannel("exec");
+			channel = (ChannelExec) session.openChannel("exec"); //$NON-NLS-1$
 		} catch (JSchException e) {
-			throw new ExecutionError(
-					"Error connecting to " + session.getHost(), e);
+			throw new ExecutionError(MessageFormat.format(
+					Messages.getString("SshCommandExecutor.ErrorConnectingTo"), session.getHost()), e); //$NON-NLS-1$
 		}
 		return channel;
 	}
@@ -106,10 +116,14 @@ public class SshCommandExecutor {
 		}
 	}
 
-	private void wait(int time) {
+	private void doWait() {
 		try {
-			Thread.sleep(time);
-		} catch (Exception ee) {
+			Thread.sleep(250);
+		} catch (InterruptedException e) {
+			/*
+			 * Right now the application is single threaded, so there's nothing
+			 * to worry about interruptions. And 250 is a non negative number.
+			 */
 		}
 	}
 }

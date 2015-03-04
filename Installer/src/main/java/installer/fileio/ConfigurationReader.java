@@ -2,8 +2,10 @@ package installer.fileio;
 
 import installer.model.Host;
 import installer.model.InstallerConfiguration;
+import installer.Messages;
 
 import java.io.IOException;
+import java.text.MessageFormat;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.vfs2.FileObject;
@@ -54,16 +56,16 @@ public class ConfigurationReader {
 	private InstallerConfiguration generateConfigurationFrom(Document document) {
 		InstallerConfiguration conf = new InstallerConfiguration();
 		String defaultUsername, defaultInstallationDirectory;
-		Element defaults = (Element) document.getElementsByTagName("defaults")
+		Element defaults = (Element) document.getElementsByTagName("defaults") //$NON-NLS-1$
 				.item(0);
-		defaultUsername = defaults.getElementsByTagName("username").item(0)
+		defaultUsername = defaults.getElementsByTagName("username").item(0) //$NON-NLS-1$
 				.getTextContent();
 		defaultInstallationDirectory = defaults
-				.getElementsByTagName("installationDirectory").item(0)
+				.getElementsByTagName("installationDirectory").item(0) //$NON-NLS-1$
 				.getTextContent();
-		Element nodes = (Element) document.getElementsByTagName("nodes")
+		Element nodes = (Element) document.getElementsByTagName("nodes") //$NON-NLS-1$
 				.item(0);
-		NodeList nodeList = nodes.getElementsByTagName("node");
+		NodeList nodeList = nodes.getElementsByTagName("node"); //$NON-NLS-1$
 		for (int i = 0; i < nodeList.getLength(); i++) {
 			String installationDirectory, username, hostname;
 			Integer port;
@@ -76,16 +78,16 @@ public class ConfigurationReader {
 			conf.addHost(new Host(installationDirectory, username, hostname,
 					port));
 		}
-		Element ssh = (Element) document.getElementsByTagName("ssh").item(0);
+		Element ssh = (Element) document.getElementsByTagName("ssh").item(0); //$NON-NLS-1$
 		if (ssh != null) {
 			Element sshKeyFile = (Element) ssh.getElementsByTagName(
-					"sshKeyFile").item(0);
+					"sshKeyFile").item(0); //$NON-NLS-1$
 			if (sshKeyFile != null) {
 				conf.sshKeyFile(sshKeyFile.getTextContent());
 			}
 		}
 
-		Element files = (Element) document.getElementsByTagName("files")
+		Element files = (Element) document.getElementsByTagName("files") //$NON-NLS-1$
 				.item(0);
 
 		for (int i = 0; i < files.getChildNodes().getLength(); i++) {
@@ -99,12 +101,12 @@ public class ConfigurationReader {
 	}
 
 	private String getHostnameFrom(Element node) {
-		return node.getElementsByTagName("hostname").item(0).getTextContent();
+		return node.getElementsByTagName("hostname").item(0).getTextContent(); //$NON-NLS-1$
 	}
 
 	private String getInstallationDirectoryFrom(Element node,
 			String defaultInstallationDirectory) {
-		Node value = node.getElementsByTagName("installationDirectory").item(0);
+		Node value = node.getElementsByTagName("installationDirectory").item(0); //$NON-NLS-1$
 		if (value == null)
 			return defaultInstallationDirectory;
 		else
@@ -112,7 +114,7 @@ public class ConfigurationReader {
 	}
 
 	private Integer getPortFrom(Element node) {
-		Node value = node.getElementsByTagName("port").item(0);
+		Node value = node.getElementsByTagName("port").item(0); //$NON-NLS-1$
 		if (value == null)
 			return 22;
 		else
@@ -120,7 +122,7 @@ public class ConfigurationReader {
 	}
 
 	private String getUsernameFrom(Element node, String defaultUsername) {
-		Node value = node.getElementsByTagName("username").item(0);
+		Node value = node.getElementsByTagName("username").item(0); //$NON-NLS-1$
 		if (value == null)
 			return defaultUsername;
 		else
@@ -134,14 +136,16 @@ public class ConfigurationReader {
 		parser.setErrorHandler(errorHandler);
 		try {
 			// Force validation against DTD
-			parser.setFeature("http://xml.org/sax/features/validation", true);
+			parser.setFeature("http://xml.org/sax/features/validation", true); //$NON-NLS-1$
 			parser.parse(new XMLInputSource(null, null, null, xmlDocument
-					.getContent().getInputStream(), "UTF-8"));
+					.getContent().getInputStream(), "UTF-8")); //$NON-NLS-1$
 		} catch (SAXNotRecognizedException | SAXNotSupportedException
 				| IOException e) {
-			throw new ConfigurationReadError("Error configuring XML Reader", e);
+			throw new ConfigurationReadError(
+					Messages.getString("ConfigurationReader.ErrorConfiguringXMLReader"), e); //$NON-NLS-1$
 		} catch (XNIException e) {
-			throw new ConfigurationReadError("Error when reading XML", e);
+			throw new ConfigurationReadError(
+					Messages.getString("ConfigurationReader.ErrorReadingXML"), e); //$NON-NLS-1$
 		}
 		return parser.getDocument();
 	}
@@ -155,43 +159,46 @@ public class ConfigurationReader {
 	}
 
 	private void validate(DocumentType doctype) throws ConfigurationReadError {
+		String dtdFileName = "configuration.dtd"; //$NON-NLS-1$
 		if (doctype == null) {
-			throw new ConfigurationReadError(
-					"Document DTD should be the provided 'configuration.dtd\n'"
-							+ "<!DOCTYPE configuration SYSTEM \"configuration.dtd\">",
-					null);
+			String dtdFileReference = MessageFormat.format(
+					"<!DOCTYPE configuration SYSTEM \"{0}\">", //$NON-NLS-1$
+					dtdFileName);
+			throw new ConfigurationReadError(MessageFormat.format(Messages
+					.getString("ConfigurationReader.DTDShouldBeProvided"), //$NON-NLS-1$
+					dtdFileName, dtdFileReference), null);
 		}
 		String expectedDtd;
 		try {
 			try {
 				// Code for runtime
 				expectedDtd = IOUtils.toString(this.getClass()
-						.getResourceAsStream("/resources/configuration.dtd"));
+						.getResourceAsStream("/resources/" + dtdFileName)); //$NON-NLS-1$
 			} catch (NullPointerException e) {
 				// Code for development
 				expectedDtd = IOUtils.toString(this.getClass().getClassLoader()
-						.getResourceAsStream("configuration.dtd"));
+						.getResourceAsStream(dtdFileName));
 			}
 		} catch (IOException e) {
-			throw new ConfigurationReadError(
-					"Document DTD 'configuration.dtd\n' not found in the file resources",
-					null);
+			throw new ConfigurationReadError(MessageFormat.format(Messages
+					.getString("ConfigurationReader.DTDResourceNotFound"), //$NON-NLS-1$
+					dtdFileName), null);
 		}
 		try {
 			FileObject dtdFile = VFS.getManager().resolveFile(
-					"file:/" + System.getProperty("user.dir")
-							+ "/configuration.dtd");
+					MessageFormat.format("file:/{0}/configuration.dtd", //$NON-NLS-1$
+							System.getProperty("user.dir"))); //$NON-NLS-1$
 			String content = IOUtils.toString(dtdFile.getContent()
-					.getInputStream(), "UTF-8");
+					.getInputStream(), "UTF-8"); //$NON-NLS-1$
 			if (!content.equals(expectedDtd)) {
-				throw new ConfigurationReadError(
-						"Document DTD 'configuration.dtd\n' does not match the provided dtd\n"
-								+ "Should be: " + expectedDtd, null);
+				throw new ConfigurationReadError(MessageFormat.format(Messages
+						.getString("ConfigurationReader.DTDDoesNotMatch"), //$NON-NLS-1$
+						dtdFileName, expectedDtd), null);
 			}
 		} catch (IOException e) {
-			throw new ConfigurationReadError(
-					"Document DTD 'configuration.dtd\n' not found\n"
-							+ "Should be: " + expectedDtd, null);
+			throw new ConfigurationReadError(MessageFormat.format(
+					Messages.getString("ConfigurationReader.DTDFileNotFound"), //$NON-NLS-1$
+					dtdFileName, expectedDtd), null);
 		}
 	}
 }

@@ -32,18 +32,18 @@ public class ConfigurationXMLBuilder {
 		DocumentBuilder db;
 		db = dbf.newDocumentBuilder();
 		Document document = db.newDocument();
-		Element configuration = document.createElement("configuration");
+		Element configuration = document.createElement("configuration"); //$NON-NLS-1$
 		document.appendChild(configuration);
 		for (Property property : properties) {
-			Element propertyNode = document.createElement("property");
-			Element name = document.createElement("name");
-			Element value = document.createElement("value");
+			Element propertyNode = document.createElement("property"); //$NON-NLS-1$
+			Element name = document.createElement("name"); //$NON-NLS-1$
+			Element value = document.createElement("value"); //$NON-NLS-1$
 			name.setTextContent(property.name());
 			value.setTextContent(property.value());
 			propertyNode.appendChild(name);
 			propertyNode.appendChild(value);
 			if (property.hasDescription() && !property.description().isEmpty()) {
-				Element description = document.createElement("description");
+				Element description = document.createElement("description"); //$NON-NLS-1$
 				description.setTextContent(property.description());
 				propertyNode.appendChild(description);
 			}

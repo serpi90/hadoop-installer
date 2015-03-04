@@ -1,4 +1,4 @@
-package installer.controller;
+package installer;
 
 import installer.exception.InstallationError;
 import installer.exception.InstallationFatalError;
@@ -8,7 +8,7 @@ import org.apache.commons.logging.impl.SimpleLog;
 public class Main {
 
 	public static void main(String[] args) {
-		SimpleLog log = new SimpleLog("MyLog");
+		SimpleLog log = new SimpleLog(Messages.getString("Main.LogName")); //$NON-NLS-1$
 		log.setLevel(SimpleLog.LOG_LEVEL_ALL);
 		try {
 			new Installer(log).run();

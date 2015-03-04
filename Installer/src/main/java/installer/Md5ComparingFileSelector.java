@@ -1,8 +1,9 @@
-package installer.controller;
+package installer;
 
-import installer.controller.SshCommandExecutor.ExecutionError;
+import installer.SshCommandExecutor.ExecutionError;
 import installer.model.Host;
 
+import java.text.MessageFormat;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -43,9 +44,9 @@ public class Md5ComparingFileSelector implements FileSelector {
 			SshCommandExecutor md5Command = new SshCommandExecutor(session);
 
 			try {
-				md5Command.execute("cd " + host.getInstallationDirectory()
-						+ "; md5sum --binary " + fileName
-						+ " | grep -o '^[0-9a-f]*'");
+				md5Command.execute(MessageFormat.format(
+						"cd {0}; md5sum --binary {1} | grep -o ''^[0-9a-f]*''", //$NON-NLS-1$
+						host.getInstallationDirectory(), fileName));
 			} catch (ExecutionError e) {
 				return true;
 			}

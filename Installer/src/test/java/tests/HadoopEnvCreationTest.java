@@ -12,7 +12,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URI;
 
-import org.apache.commons.vfs2.FileSystemManager;
+import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.VFS;
 import org.junit.Before;
 import org.junit.Test;
@@ -24,15 +24,13 @@ import org.junit.Test;
 @SuppressWarnings("nls")
 public class HadoopEnvCreationTest {
 
-	URI baseUri;
-	URI hadoopEnvURI;
-	FileSystemManager mgr;
+	private FileObject file;
 
-	private boolean lineExistsInFile(URI fileUri, String expectedLine)
+	private boolean lineExistsInFile(FileObject file, String expectedLine)
 			throws IOException {
 		String readLine;
 		InputStream is;
-		is = mgr.resolveFile(fileUri.toString()).getContent().getInputStream();
+		is = file.getContent().getInputStream();
 
 		BufferedReader br = new BufferedReader(new InputStreamReader(is));
 		readLine = br.readLine();
@@ -50,25 +48,37 @@ public class HadoopEnvCreationTest {
 	 */
 	@Before
 	public void setUp() throws Exception {
-		mgr = VFS.getManager();
-
-		baseUri = new URI("ram:///");
-		hadoopEnvURI = baseUri.resolve("etc/hadoop/hadoop-env.sh");
+		System.setProperty("org.apache.commons.logging.Log",
+				"org.apache.commons.logging.impl.NoOpLog");
+		file = VFS.getManager().resolveFile(
+				new URI("ram:///").resolve("etc/hadoop/hadoop-env.sh")
+						.toString());
 	}
 
+	@Test
 	public void testHadoopPrefixCanBeSet() throws Exception {
-		HadoopEnvBuilder generator = new HadoopEnvBuilder(mgr, hadoopEnvURI);
+		HadoopEnvBuilder generator = new HadoopEnvBuilder(file);
 		generator.setHadoopPrefix("expected");
 		generator.build();
-		assertTrue(lineExistsInFile(hadoopEnvURI,
-				"export HADOOP_PREFIX=expected"));
+		assertTrue(lineExistsInFile(file, "export HADOOP_PREFIX=expected"));
 	}
 
 	@Test
 	public void testJavaHomeCanBeSet() throws Exception {
-		HadoopEnvBuilder generator = new HadoopEnvBuilder(mgr, hadoopEnvURI);
+		HadoopEnvBuilder generator = new HadoopEnvBuilder(file);
 		generator.setJavaHome("expected");
 		generator.build();
-		assertTrue(lineExistsInFile(hadoopEnvURI, "export JAVA_HOME=expected"));
+		assertTrue(lineExistsInFile(file, "export JAVA_HOME=expected"));
+	}
+
+	@Test
+	public void testCustomConfigCanBeAdded() throws Exception {
+		HadoopEnvBuilder generator = new HadoopEnvBuilder(file);
+		generator
+				.setCustomConfig("this is some\nweird config\nat the end of file");
+		generator.build();
+		assertTrue(lineExistsInFile(file, "this is some"));
+		assertTrue(lineExistsInFile(file, "weird config"));
+		assertTrue(lineExistsInFile(file, "at the end of file"));
 	}
 }

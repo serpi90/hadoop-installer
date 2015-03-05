@@ -1,7 +1,7 @@
 package installer.fileio;
 
-import installer.model.Host;
-import installer.model.InstallerConfiguration;
+import installer.Host;
+import installer.InstallerConfiguration;
 import installer.Messages;
 
 import java.io.IOException;

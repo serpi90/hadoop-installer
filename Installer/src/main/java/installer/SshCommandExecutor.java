@@ -54,6 +54,17 @@ public class SshCommandExecutor {
 		}
 	}
 
+	private void doWait() {
+		try {
+			Thread.sleep(250);
+		} catch (InterruptedException e) {
+			/*
+			 * Right now the application is single threaded, so there's nothing
+			 * to worry about interruptions. And 250 is a non negative number.
+			 */
+		}
+	}
+
 	/**
 	 * @param command
 	 *            the string to execute via ssh
@@ -118,17 +129,6 @@ public class SshCommandExecutor {
 	private void output(String line) {
 		if (line != null) {
 			output.add(line);
-		}
-	}
-
-	private void doWait() {
-		try {
-			Thread.sleep(250);
-		} catch (InterruptedException e) {
-			/*
-			 * Right now the application is single threaded, so there's nothing
-			 * to worry about interruptions. And 250 is a non negative number.
-			 */
 		}
 	}
 }

@@ -1,10 +1,10 @@
 package installer.md5;
 
 public class Result {
-	private Reason reason;
+	private String description;
 	private String file;
 	private boolean included;
-	private String description;
+	private Reason reason;
 
 	public Result(boolean included, String file, Reason reason) {
 		this.setIncluded(included);
@@ -21,39 +21,39 @@ public class Result {
 		this.setDescription(description);
 	}
 
-	public boolean hasDescription() {
-		return getDescription() != null;
-	}
-
 	public String getDescription() {
 		return this.description;
-	}
-
-	private void setDescription(String description) {
-		this.description = description;
-	}
-
-	public Reason getReason() {
-		return reason;
-	}
-
-	private void setReason(Reason reason) {
-		this.reason = reason;
 	}
 
 	public String getFile() {
 		return file;
 	}
 
-	private void setFile(String file) {
-		this.file = file;
+	public Reason getReason() {
+		return reason;
+	}
+
+	public boolean hasDescription() {
+		return getDescription() != null;
 	}
 
 	public boolean isIncluded() {
 		return included;
 	}
 
+	private void setDescription(String description) {
+		this.description = description;
+	}
+
+	private void setFile(String file) {
+		this.file = file;
+	}
+
 	private void setIncluded(boolean included) {
 		this.included = included;
+	}
+
+	private void setReason(Reason reason) {
+		this.reason = reason;
 	}
 }

@@ -1,4 +1,4 @@
-package installer.model;
+package installer;
 
 public class Property {
 

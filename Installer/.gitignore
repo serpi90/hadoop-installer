@@ -1,7 +1,7 @@
-/target/
-/dependencies/
-dependencies
-/test.dtd
-/doc
 /configuration.dtd
 /configuration.xml
+/dependencies/
+/doc/
+/hadoop-etc/
+/target/
+/test.dtd

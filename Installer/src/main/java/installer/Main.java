@@ -1,6 +1,5 @@
 package installer;
 
-import installer.exception.InstallationError;
 import installer.exception.InstallationFatalError;
 
 import java.util.HashMap;
@@ -10,21 +9,16 @@ import org.apache.commons.logging.impl.SimpleLog;
 
 public class Main {
 
-	public static void main(String[] args) {
-		// Disable VFS default logging.
-		System.setProperty("org.apache.commons.logging.Log", //$NON-NLS-1$
-				"org.apache.commons.logging.impl.NoOpLog"); //$NON-NLS-1$
-
+	private static SimpleLog createLog() {
+		// Configure
+		System.setProperty(
+				"org.apache.commons.logging.simplelog.showdatetime", "true"); //$NON-NLS-1$ //$NON-NLS-2$
+		System.setProperty(
+				"org.apache.commons.logging.simplelog.showlogname", "false"); //$NON-NLS-1$ //$NON-NLS-2$
+		System.setProperty(
+				"org.apache.commons.logging.simplelog.showShortLogname", "false"); //$NON-NLS-1$ //$NON-NLS-2$
 		// Parse log configuration arguments.
-		SimpleLog log = new SimpleLog(Messages.getString("Main.LogName")); //$NON-NLS-1$
-		log.setLevel(detectLogLevel(args));
-		try {
-			new Installer(log).run();
-		} catch (InstallationFatalError e) {
-			log.fatal(e.getMessage(), e.getCause());
-		} catch (InstallationError e) {
-			log.error(e.getMessage(), e.getCause());
-		}
+		return new SimpleLog(Messages.getString("Main.LogName")); //$NON-NLS-1$
 	}
 
 	private static Integer detectLogLevel(String[] args) {
@@ -46,5 +40,20 @@ public class Main {
 			}
 		}
 		return SimpleLog.LOG_LEVEL_INFO;
+	}
+
+	public static void main(String[] args) {
+		// Disable VFS default logging.
+		System.setProperty("org.apache.commons.logging.Log", //$NON-NLS-1$
+				"org.apache.commons.logging.impl.NoOpLog"); //$NON-NLS-1$
+		// Create and configure our log
+		SimpleLog log = createLog();
+		log.setLevel(detectLogLevel(args));
+		try {
+			new Installer(log).run();
+		} catch (InstallationFatalError e) {
+			log.fatal(e.getMessage(), e.getCause());
+			System.exit(1);
+		}
 	}
 }

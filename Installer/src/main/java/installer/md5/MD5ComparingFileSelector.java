@@ -1,8 +1,8 @@
 package installer.md5;
 
+import installer.Host;
 import installer.SshCommandExecutor;
 import installer.SshCommandExecutor.ExecutionError;
-import installer.model.Host;
 
 import java.text.MessageFormat;
 import java.util.HashMap;

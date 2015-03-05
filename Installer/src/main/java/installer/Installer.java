@@ -5,11 +5,10 @@ import installer.exception.InstallationError;
 import installer.exception.InstallationFatalError;
 import installer.fileio.ConfigurationReader;
 import installer.fileio.ConfigurationReader.ConfigurationReadError;
+import installer.fileio.HadoopEnvBuilder;
 import installer.md5.MD5Calculator;
 import installer.md5.MD5ComparingFileSelector;
 import installer.md5.MD5ComparingObserver;
-import installer.model.Host;
-import installer.model.InstallerConfiguration;
 
 import java.io.File;
 import java.io.IOException;
@@ -17,10 +16,13 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.NoSuchAlgorithmException;
 import java.text.MessageFormat;
+import java.util.HashMap;
+import java.util.Map;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.impl.SimpleLog;
-import org.apache.commons.vfs2.FileName;
+import org.apache.commons.vfs2.AllFileSelector;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemManager;
@@ -37,19 +39,23 @@ public class Installer {
 
 	private InstallerConfiguration configuration;
 	private FileObject dependencies;
+	private Map<String, String> dependenciesPath;
 	private FileSystemManager fsManager;
+	private FileObject hadoopEtc;
 	private JSch jsch;
 	private Log log;
-	private FileSystemOptions sftpOptions;
 	private MD5ComparingObserver md5Observer;
+	private FileSystemOptions sftpOptions;
 
 	public Installer(Log aLog) throws InstallationFatalError {
+		dependenciesPath = new HashMap<String, String>();
 		setLog(aLog);
 		getLog().info(Messages.getString("Installer.ConfiguringInstaller")); //$NON-NLS-1$
 		initializeFsManager();
 		String localDirectoryPath = System.getProperty("user.dir"); //$NON-NLS-1$
 		FileObject localDirectory = openLocalDirectory(localDirectoryPath);
-		openDependenciesDirectory(localDirectory);
+		dependencies = openLocalSubDirectory(localDirectory, "dependencies"); //$NON-NLS-1$
+		hadoopEtc = openLocalSubDirectory(localDirectory, "hadoop-etc"); //$NON-NLS-1$
 		loadConfiguration(localDirectory);
 		configureVFS2SFTP();
 		configureJSch();
@@ -125,7 +131,7 @@ public class Installer {
 
 	private void configureJSch() throws InstallationFatalError {
 		try {
-			// TODO sacar policy de archivo de configuraacion (yes/no/ask).
+			// TODO- sacar policy de archivo de configuraacion (yes/no/ask).
 			JSch.setConfig("StrictHostKeyChecking", "ask"); //$NON-NLS-1$//$NON-NLS-2$
 			jsch = new JSch();
 			// JSch.setLogger(new MyLogger());
@@ -161,12 +167,48 @@ public class Installer {
 		getLog().trace(Messages.getString("Installer.ConfiguredSFTP")); //$NON-NLS-1$
 	}
 
-	private Session connectTo(Host host) throws JSchException {
-		Session session;
-		session = jsch.getSession(host.getUsername(), host.getHostname(),
-				host.getPort());
-		session.connect();
-		return session;
+	private Session connectTo(Host host) throws InstallationError {
+		try {
+			Session session;
+			session = jsch.getSession(host.getUsername(), host.getHostname(),
+					host.getPort());
+			session.connect();
+			return session;
+		} catch (JSchException e) {
+			throw new InstallationError(
+					MessageFormat.format(
+							Messages.getString("Installer.ErrorWhenConnectingToAs"), host.getHostname(), //$NON-NLS-1$
+							host.getUsername()), e);
+		}
+	}
+
+	private void copyConfigurationFiles(FileObject remoteDirectory)
+			throws InstallationError {
+		try {
+			copyEtcHadoopFiles(remoteDirectory);
+			writeHadoopEnv(remoteDirectory);
+			System.out.println();
+		} catch (FileSystemException e) {
+			getLog().warn(
+					MessageFormat
+							.format(Messages
+									.getString("Installer.ErrorCopyingFilesTo"), remoteDirectory.getName()), e); //$NON-NLS-1$
+		}
+	}
+
+	private void copyEtcHadoopFiles(FileObject remoteDirectory)
+			throws FileSystemException {
+		FileObject remoteHadoopEtc = remoteDirectory
+				.resolveFile(dependenciesPath.get("hadoop") + "/etc/hadoop/"); //$NON-NLS-1$ //$NON-NLS-2$
+		getLog().info(
+				MessageFormat.format(Messages
+						.getString("Installer.CopyingContentsOfHadoopEtcTo"), //$NON-NLS-1$
+						remoteHadoopEtc.getName()));
+		remoteHadoopEtc.copyFrom(hadoopEtc, new AllFileSelector());
+		getLog().info(
+				MessageFormat.format(Messages
+						.getString("Installer.CopiedContentsOfHadoopEtcTo"), //$NON-NLS-1$
+						remoteHadoopEtc.getName()));
 	}
 
 	private Log getLog() {
@@ -186,32 +228,21 @@ public class Installer {
 	}
 
 	private void install(Host host) throws InstallationError {
-		FileObject remoteDirectory;
-
 		getLog().info(
 				MessageFormat.format(
 						Messages.getString("Installer.BeginInstalling"), host.getHostname())); //$NON-NLS-1$
 		Session session = null;
+		FileObject remoteDirectory;
 		try {
 			session = connectTo(host);
 			remoteDirectory = uploadFiles(host, session);
 			uncompressFiles(host, session);
-
-		} catch (JSchException e) {
-			throw new InstallationError(
-					MessageFormat.format(
-							Messages.getString("Installer.ErrorWhenConnectingToAs"), host.getHostname(), //$NON-NLS-1$
-							host.getUsername()), e);
-		} catch (FileSystemException e) {
-			throw new InstallationError(
-					Messages.getString("Installer.ErrorObtainingFIlesToUncompress"), //$NON-NLS-1$
-					e);
 		} finally {
 			if (session != null && session.isConnected()) {
 				session.disconnect();
 			}
 		}
-		// TODO! pasar archivos de configuracion
+		copyConfigurationFiles(remoteDirectory);
 		closeInstallationDirectory(remoteDirectory, host);
 		getLog().info(
 				Messages.getString("Installer.FinishedInstalling") + host.getHostname()); //$NON-NLS-1$
@@ -246,11 +277,12 @@ public class Installer {
 			try {
 				String path = MessageFormat.format(
 						"tgz://{0}/dependencies/{1}", localDirectory, fileName); //$NON-NLS-1$
-				FileName fname = fsManager.resolveFile(path).getChildren()[0]
-						.getName();
+				String name = fsManager.resolveFile(path).getChildren()[0]
+						.getName().getBaseName();
+				dependenciesPath.put(fileType, name);
 				String message = MessageFormat
 						.format(Messages.getString("Installer.DirectoryOfIs"), fileType, //$NON-NLS-1$
-								fname.getBaseName());
+								name);
 				getLog().trace(message);
 			} catch (FileSystemException e) {
 				String message = MessageFormat.format(Messages
@@ -262,21 +294,40 @@ public class Installer {
 
 	}
 
-	private void openDependenciesDirectory(FileObject localDirectory)
+	private FileObject openLocalDirectory(String localPath)
 			throws InstallationFatalError {
-		String folderName = "dependencies"; //$NON-NLS-1$
+		FileObject localDirectory;
 		try {
-			dependencies = localDirectory.resolveFile(folderName);
+			localDirectory = fsManager.resolveFile(localPath);
 		} catch (FileSystemException e) {
-			throw new InstallationFatalError(MessageFormat.format(Messages
-					.getString("Installer.CouldNotResolveDependenciesFolder"), //$NON-NLS-1$
-					folderName), e);
+			throw new InstallationFatalError(
+					MessageFormat
+							.format(Messages
+									.getString("Installer.CouldNotOpenLocalDirectory"), localPath), e); //$NON-NLS-1$
 		}
-		getLog().debug(
-				Messages.getString("Installer.FoundDependenciesDirectory")); //$NON-NLS-1$
+		getLog().trace(
+				MessageFormat.format(
+						Messages.getString("Installer.OpenedLocalDirectory"), localPath)); //$NON-NLS-1$
+		return localDirectory;
 	}
 
-	private FileObject openInstallationDirectory(Host host)
+	private FileObject openLocalSubDirectory(FileObject localDirectory,
+			String directoryName) throws InstallationFatalError {
+		FileObject directory = null;
+		try {
+			directory = localDirectory.resolveFile(directoryName);
+		} catch (FileSystemException e) {
+			throw new InstallationFatalError(MessageFormat.format(
+					Messages.getString("Installer.CouldNotResolveFolder"), //$NON-NLS-1$
+					directoryName), e);
+		}
+		getLog().debug(
+				MessageFormat.format(
+						Messages.getString("Installer.FoundDirectory"), directoryName)); //$NON-NLS-1$
+		return directory;
+	}
+
+	private FileObject openRemoteInstallationDirectory(Host host)
 			throws InstallationError {
 		FileObject remoteDirectory;
 		try {
@@ -297,27 +348,15 @@ public class Installer {
 		return remoteDirectory;
 	}
 
-	private FileObject openLocalDirectory(String localPath)
-			throws InstallationFatalError {
-		FileObject localDirectory;
-		try {
-			localDirectory = fsManager.resolveFile(localPath);
-		} catch (FileSystemException e) {
-			throw new InstallationFatalError(
-					MessageFormat
-							.format(Messages
-									.getString("Installer.CouldNotOpenLocalDirectory"), localPath), e); //$NON-NLS-1$
-		}
-		getLog().trace(
-				MessageFormat.format(
-						Messages.getString("Installer.OpenedLocalDirectory"), localPath)); //$NON-NLS-1$
-		return localDirectory;
-	}
-
-	public void run() throws InstallationError {
+	public void run() throws InstallationFatalError {
+		// TODO: Define, apply and check rules for logging level
 		getLog().info(Messages.getString("Installer.InstallationStarted")); //$NON-NLS-1$
 		for (Host host : configuration.getNodes()) {
-			install(host);
+			try {
+				install(host);
+			} catch (InstallationError e) {
+				log.error(e.getMessage(), e.getCause());
+			}
 		}
 		getLog().info(Messages.getString("Installer.InstallationFinished")); //$NON-NLS-1$
 	}
@@ -327,38 +366,43 @@ public class Installer {
 	}
 
 	private void uncompressFiles(Host host, Session session)
-			throws FileSystemException, InstallationError {
+			throws InstallationError {
 		getLog().info(
 				MessageFormat.format(Messages
 						.getString("Installer.UncompressingUploadedFilesIn"), //$NON-NLS-1$
 						host.getHostname()));
-		for (FileObject file : dependencies.getChildren()) {
-			String commandString = MessageFormat
-					.format("cd {0}; tar -zxf {1}", host.getInstallationDirectory(), file.getName().getBaseName()); //$NON-NLS-1$
-			SshCommandExecutor command = new SshCommandExecutor(session);
-			try {
+		try {
+			for (FileObject file : dependencies.getChildren()) {
+				String commandString = MessageFormat
+						.format("cd {0}; tar -zxf {1}", host.getInstallationDirectory(), file.getName().getBaseName()); //$NON-NLS-1$
+				SshCommandExecutor command = new SshCommandExecutor(session);
 				command.execute(commandString);
 				if (!command.getOutput().isEmpty()) {
 					for (String line : command.getOutput()) {
 						getLog().trace(line);
 					}
 				}
-			} catch (ExecutionError e) {
-				throw new InstallationError(MessageFormat.format(Messages
-						.getString("Installer.CommandExecutionFailedAt"), //$NON-NLS-1$
-						host.getHostname()), e);
 			}
+		} catch (ExecutionError e) {
+			throw new InstallationError(MessageFormat.format(
+					Messages.getString("Installer.CommandExecutionFailedAt"), //$NON-NLS-1$
+					host.getHostname()), e);
+
+		} catch (FileSystemException e) {
+			throw new InstallationError(
+					Messages.getString("Installer.ErrorObtainingFilesToUncompress"), //$NON-NLS-1$
+					e);
 		}
 		getLog().info(
 				MessageFormat.format(Messages
-						.getString("Installer.UncompresseedUploadedFilesIn"), //$NON-NLS-1$
+						.getString("Installer.UncompressedUploadedFilesIn"), //$NON-NLS-1$
 						host.getHostname()));
 	}
 
 	private FileObject uploadFiles(Host host, Session session)
 			throws InstallationError {
 		FileObject remoteDirectory;
-		remoteDirectory = openInstallationDirectory(host);
+		remoteDirectory = openRemoteInstallationDirectory(host);
 		try {
 			MD5ComparingFileSelector selector = new MD5ComparingFileSelector(
 					host, session);
@@ -367,7 +411,7 @@ public class Installer {
 			selector.deleteObserver(md5Observer);
 		} catch (FileSystemException e) {
 			throw new InstallationError(MessageFormat.format(Messages
-					.getString("Installer.ErrorUploadingcompressedFiles"), //$NON-NLS-1$
+					.getString("Installer.ErrorUploadingCompressedFiles"), //$NON-NLS-1$
 					remoteDirectory.getName()), e);
 		}
 		getLog().info(
@@ -381,5 +425,30 @@ public class Installer {
 		return new URI("sftp", host.getUsername(), host.getHostname(), //$NON-NLS-1$
 				host.getPort(), host.getInstallationDirectory(), null, null)
 				.toString();
+	}
+
+	private void writeHadoopEnv(FileObject remoteDirectory)
+			throws FileSystemException {
+		FileObject remoteHadoopEnvSh = remoteDirectory
+				.resolveFile("/etc/hadoop/hadoop-env.sh"); //$NON-NLS-1$
+		HadoopEnvBuilder heb = new HadoopEnvBuilder(remoteHadoopEnvSh);
+		try {
+			// TODO: Get custom config for hadoop-env from other file
+			// Instead of just appending the variables to the original.
+			heb.setCustomConfig(IOUtils.toString(remoteHadoopEnvSh.getContent()
+					.getInputStream()));
+			heb.setHadoopPrefix(remoteDirectory
+					.resolveFile(dependenciesPath.get("hadoop")).getName() //$NON-NLS-1$
+					.getPath());
+			heb.setJavaHome(remoteDirectory
+					.resolveFile(dependenciesPath.get("java7")).getName() //$NON-NLS-1$
+					.getPath());
+			heb.build();
+		} catch (IOException e) {
+			getLog().warn(
+					MessageFormat
+							.format(Messages
+									.getString("Installer.ErrorWritingHadoopEnvTo"), remoteHadoopEnvSh.getName()), e); //$NON-NLS-1$
+		}
 	}
 }

@@ -2,11 +2,11 @@ package tests;
 
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import installer.Host;
+import installer.InstallerConfiguration;
 import installer.fileio.ConfigurationReader;
-import installer.fileio.XMLFileWriter;
 import installer.fileio.ConfigurationReader.ConfigurationReadError;
-import installer.model.Host;
-import installer.model.InstallerConfiguration;
+import installer.fileio.XMLFileWriter;
 
 import java.io.IOException;
 import java.io.PrintWriter;

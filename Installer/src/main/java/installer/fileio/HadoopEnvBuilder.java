@@ -3,39 +3,37 @@ package installer.fileio;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.Writer;
-import java.net.URI;
 import java.text.MessageFormat;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
 import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystemManager;
 
 public class HadoopEnvBuilder {
+	private Map<String, String> parameters;
+	private String customConfig;
+	private FileObject file;
 
-	FileSystemManager fileSystemManager;
-	URI fileUri;
-	Map<String, String> parameters;
-
-	public HadoopEnvBuilder(FileSystemManager aFileSystemManager,
-			URI targetFileUri) {
-		fileSystemManager = aFileSystemManager;
-		fileUri = targetFileUri;
+	public HadoopEnvBuilder(FileObject file) {
+		this.file = file;
 		parameters = new HashMap<String, String>();
+		customConfig = new String();
 	}
 
 	public void build() throws IOException {
-		FileObject hadoopDashEnvDotSh = fileSystemManager.resolveFile(fileUri
-				.toString());
-		Writer writer = new PrintWriter(hadoopDashEnvDotSh.getContent()
-				.getOutputStream());
+		Writer writer = new PrintWriter(file.getContent().getOutputStream());
+		writer.write(customConfig);
 		for (Entry<String, String> entry : parameters.entrySet()) {
 			writer.write(MessageFormat.format(
 					"export {0}={1}\n", entry.getKey(), entry.getValue())); //$NON-NLS-1$
 		}
 		writer.close();
-		hadoopDashEnvDotSh.close();
+		file.close();
+	}
+
+	public void setCustomConfig(String config) {
+		this.customConfig = config;
 	}
 
 	public void setHadoopPrefix(String string) {

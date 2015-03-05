@@ -1,6 +1,6 @@
 package installer.fileio;
 
-import installer.model.Property;
+import installer.Property;
 
 import java.util.HashSet;
 import java.util.Set;

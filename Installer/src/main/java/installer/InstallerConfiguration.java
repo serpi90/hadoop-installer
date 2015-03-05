@@ -1,4 +1,4 @@
-package installer.model;
+package installer;
 
 import java.util.ArrayList;
 import java.util.HashMap;

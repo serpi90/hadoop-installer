@@ -5,9 +5,11 @@ import installer.fileio.ConfigurationXMLBuilder;
 import installer.fileio.XMLFileWriter;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.vfs2.FileSystemManager;
+import org.apache.commons.vfs2.FileObject;
+import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.VFS;
 import org.junit.Before;
 import org.junit.Test;
@@ -16,15 +18,18 @@ import org.w3c.dom.Document;
 @SuppressWarnings("nls")
 public class XMLDumperTest {
 
-	private URI baseUri;
-	private URI fileURI;
-	private FileSystemManager mgr;
+	private FileObject file;
 
 	@Before
 	public void setUp() throws Exception {
-		mgr = VFS.getManager();
-		baseUri = new URI("ram:///");
-		fileURI = baseUri.resolve("etc/file.xml");
+		System.setProperty("org.apache.commons.logging.Log",
+				"org.apache.commons.logging.impl.NoOpLog");
+		openFile();
+	}
+
+	private void openFile() throws FileSystemException, URISyntaxException {
+		file = VFS.getManager().resolveFile(
+				new URI("ram:///").resolve("etc/file.xml").toString());
 	}
 
 	@Test
@@ -39,11 +44,10 @@ public class XMLDumperTest {
 		ConfigurationXMLBuilder builder = new ConfigurationXMLBuilder();
 		builder.addProperty("aName", "aValue", "aDescription");
 		Document xmlDocument = builder.build();
-		dumper.saveToFile(mgr.resolveFile(fileURI.toString()), xmlDocument);
+		dumper.saveToFile(file, xmlDocument);
 
-		String fileContents = IOUtils.toString(
-				mgr.resolveFile(fileURI.toString()).getContent()
-						.getInputStream(), "UTF-8");
+		String fileContents = IOUtils.toString(file.getContent()
+				.getInputStream(), "UTF-8");
 		assertTrue(fileContents.equals(expectedXml));
 	}
 }

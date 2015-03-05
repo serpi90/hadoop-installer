@@ -19,13 +19,11 @@ import javax.xml.parsers.ParserConfigurationException;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;
-import org.apache.commons.vfs2.FileSystemManager;
 import org.apache.commons.vfs2.VFS;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.w3c.dom.Document;
-import org.w3c.dom.DocumentType;
 import org.w3c.dom.Element;
 
 @SuppressWarnings("nls")
@@ -46,12 +44,10 @@ public class ConfigurationReaderTest {
 	}
 
 	private Document generateTestXML() throws ParserConfigurationException {
-
 		Document document = DocumentBuilderFactory.newInstance()
 				.newDocumentBuilder().newDocument();
-		DocumentType documentType = document.getImplementation()
-				.createDocumentType("configuration", null, "test.dtd");
-		document.appendChild(documentType);
+		document.appendChild(document.getImplementation().createDocumentType(
+				"configuration", null, "test.dtd"));
 		Element configuration = document.createElement("configuration");
 		document.appendChild(configuration);
 		Element defaults = document.createElement("defaults");
@@ -124,8 +120,9 @@ public class ConfigurationReaderTest {
 	@Before
 	public void setUp() {
 		try {
-			FileSystemManager fsManager = VFS.getManager();
-			xmlFile = fsManager.resolveFile("ram://test.xml");
+			System.setProperty("org.apache.commons.logging.Log",
+					"org.apache.commons.logging.impl.NoOpLog");
+			xmlFile = VFS.getManager().resolveFile("ram://test.xml");
 			Document document = generateTestXML();
 			new XMLFileWriter().saveToFile(xmlFile, document);
 			dtdFile = VFS.getManager().resolveFile(
@@ -144,10 +141,9 @@ public class ConfigurationReaderTest {
 
 	@Test
 	public void testFileNotValidAgainstDTD() throws Exception {
-		ConfigurationReader reader = new ConfigurationReader();
 		try {
 			writeFile(xmlFile, generateXMLInvalidAgainstDTD());
-			reader.readFrom(xmlFile);
+			new ConfigurationReader().readFrom(xmlFile);
 			fail();
 		} catch (ConfigurationReadError e) {
 			assertTrue(true);
@@ -156,17 +152,15 @@ public class ConfigurationReaderTest {
 
 	@Test
 	public void testFiles() throws Exception {
-		ConfigurationReader reader = new ConfigurationReader();
-		InstallerConfiguration conf = reader.readFrom(xmlFile);
+		InstallerConfiguration conf = new ConfigurationReader()
+				.readFrom(xmlFile);
 		assertTrue(conf.getFiles().get("hadoop").equals("hadoop.tar.gz"));
 		assertTrue(conf.getFiles().get("java7").equals("java7.tar.gz"));
 	}
 
 	@Test
 	public void testNodeConfiguration() throws Exception {
-		ConfigurationReader reader = new ConfigurationReader();
-		InstallerConfiguration conf = reader.readFrom(xmlFile);
-		List<Host> nodes = conf.nodes();
+		List<Host> nodes = new ConfigurationReader().readFrom(xmlFile).nodes();
 		assertTrue(nodes.size() == 2);
 		Host node = nodes.get(0);
 		assertTrue(node.getUsername().equals("hadoop"));
@@ -185,9 +179,8 @@ public class ConfigurationReaderTest {
 
 	@Test
 	public void testSshKeyFile() throws Exception {
-		ConfigurationReader reader = new ConfigurationReader();
-		InstallerConfiguration conf = reader.readFrom(xmlFile);
-		assertTrue(conf.sshKeyFile().equals("/path/to/key/file"));
+		assertTrue(new ConfigurationReader().readFrom(xmlFile).sshKeyFile()
+				.equals("/path/to/key/file"));
 	}
 
 	private void writeFile(FileObject file, String content) throws IOException {

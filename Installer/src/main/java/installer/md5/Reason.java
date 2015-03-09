@@ -1,5 +1,0 @@
-package installer.md5;
-
-public enum Reason {
-	COULD_NOT_CALCULATE_MD5, FILE_NOT_IN_UPLOAD_LIST, MD5_DOES_NOT_MATCH, MD5_MATCHES
-}

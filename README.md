@@ -4,15 +4,13 @@
 
 HadoopInstaller is a software to remotely deploy Apache Hadoop and it's configuration files in a linux cluster.
 
-## Development
-
-For developement, please add the src/main folder to your classpath.
-
 ## Runtime
 
-Run with `java -jar HadoopInstaller.jar [-log:<level>]`
+Run with `java -jar HadoopInstaller.jar [-log:<level>] [-deploy]`
 
-Where level is any of: all,off,trace,debug,info,warn,error,fatal. Defaults to *info*.
+ - -deploy indicates that the software bundles should be uploaded and uncompressed. (else only the configuration files are uploaded)
+ - -log:<level> indicates the level of logging to use. (in the current version, this functionality is disabled and loglevel ALL, will be restored in the future).
+   - Where level is any of: all,off,trace,debug,info,warn,error,fatal. Defaults to *info*.
 
 ### Set Up ###
 

@@ -1,0 +1,13 @@
+<!ELEMENT configuration (defaults,nodes,ssh,files)>
+<!ELEMENT defaults (username,installationDirectory)>
+<!ELEMENT nodes (node+)>
+<!ELEMENT node (hostname,port?,username?,installationDirectory?)>
+<!ELEMENT hostname (#PCDATA)>
+<!ELEMENT port (#PCDATA)>
+<!ELEMENT username (#PCDATA)>
+<!ELEMENT installationDirectory (#PCDATA)>
+<!ELEMENT ssh (sshKeyFile?)>
+<!ELEMENT sshKeyFile (#PCDATA)>
+<!ELEMENT files (hadoop,java)>
+<!ELEMENT hadoop (#PCDATA)>
+<!ELEMENT java (#PCDATA)>

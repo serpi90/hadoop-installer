@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration SYSTEM "configuration.dtd">
+<configuration>
+	<defaults>
+		<username>hadoop</username>
+		<installationDirectory>/home/hadoop</installationDirectory>
+	</defaults>
+	<nodes>
+		<node>
+			<hostname>host1</hostname>
+			<username>apache</username>
+			<port>22</port>
+		</node>
+		<node>
+			<hostname>host2</hostname>
+			<installationDirectory>/home/hadoop/installation</installationDirectory>
+		</node>
+	</nodes>
+	<ssh>
+		<sshKeyFile>/home/user/.ssh/id_rsa</sshKeyFile>
+	</ssh>
+	<files>
+		<hadoop>hadoop-2.5.1.tar.gz</hadoop>
+		<java>jre-7u67-linux-x64.tar.gz</java>
+	</files>
+</configuration>

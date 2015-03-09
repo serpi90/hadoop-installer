@@ -1,0 +1,5 @@
+/target/
+/configuration.xml
+/configuration.dtd
+/dependencies/*
+/hadoop-etc/*

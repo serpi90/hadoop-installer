@@ -9,7 +9,7 @@ HadoopInstaller is a software to remotely deploy Apache Hadoop and it's configur
 Run with `java -jar HadoopInstaller.jar [-log:<level>] [-deploy]`
 
  - -deploy indicates that the software bundles should be uploaded and uncompressed. (else only the configuration files are uploaded)
- - -log:<level> indicates the level of logging to use. (in the current version, this functionality is disabled and loglevel ALL, will be restored in the future).
+ - -log:<level> indicates the level of logging to use.
    - Where level is any of: all,off,trace,debug,info,warn,error,fatal. Defaults to *info*.
 
 ### Set Up ###
@@ -24,8 +24,8 @@ Run with `java -jar HadoopInstaller.jar [-log:<level>] [-deploy]`
 * A tar bundle of JRE 7 x64
 
 #### Setup summary ####
-* Put the hadoop and java bundles in the `dependencies` directory.
-* Configure the installer using the `configuration.xml` file.
+* Put the hadoop and java bundles in the **dependencies** directory.
+* Configure the installer using the **configuration.xml** file using **configuration.xml.example** as a template.
 
 ## Contact ###
 

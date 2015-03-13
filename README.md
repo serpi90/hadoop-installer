@@ -26,7 +26,8 @@ Run with `java -jar HadoopInstaller.jar [-log:<level>] [-deploy]`
 #### Setup summary ####
 * Put the hadoop and java bundles in the **dependencies** directory.
 * Configure the installer using the **configuration.xml** file using **configuration.xml.example** as a template.
-
+* Put the hadoop configuration files to be uploaded to *etc/hadoop/* inside **hadoop-etc** directory.
+  * The hadoop-env.sh file will have the `HADOOP_PREFIX` and `JAVA_HOME` env-vars appended according to the configuration parameters.
 ## Contact ###
 
 You can contact me at *serpi90@gmail.com*

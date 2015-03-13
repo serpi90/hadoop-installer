@@ -1,110 +1,84 @@
 package hadoopInstaller;
 
-import java.io.IOException;
-import java.text.MessageFormat;
+import java.util.HashMap;
+import java.util.Map;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.VFS;
-import org.apache.xerces.parsers.DOMParser;
-import org.apache.xerces.xni.XNIException;
-import org.apache.xerces.xni.parser.XMLInputSource;
 import org.w3c.dom.Document;
-import org.w3c.dom.DocumentType;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-import org.xml.sax.ErrorHandler;
-import org.xml.sax.SAXException;
-import org.xml.sax.SAXNotRecognizedException;
-import org.xml.sax.SAXNotSupportedException;
-import org.xml.sax.SAXParseException;
 
 public class ConfigurationReader {
-	private static final String FILE_ENCODING = "UTF-8"; //$NON-NLS-1$
-	private static final String PORT_TAG = "port"; //$NON-NLS-1$
-	private static final String HOSTNAME_TAG = "hostname"; //$NON-NLS-1$
-	private static final String FILES_TAG = "files"; //$NON-NLS-1$
-	private static final String KEY_FILE_TAG = "sshKeyFile"; //$NON-NLS-1$
-	private static final String SSH_TAG = "ssh"; //$NON-NLS-1$
-	private static final String NODE_TAG = "node"; //$NON-NLS-1$
-	private static final String NODES_TAG = "nodes"; //$NON-NLS-1$
-	private static final String INSTALLATION_DIRECTORY_TAG = "installationDirectory"; //$NON-NLS-1$
-	private static final String USERNAME_TAG = "username"; //$NON-NLS-1$
-	private static final String DEFAULTS_TAG = "defaults"; //$NON-NLS-1$
+	private static final String ATTRIBUTE_DELETE_BUNDLES = "deleteBundles"; //$NON-NLS-1$
+	private static final String ATTRIBUTE_DELETE_OLD_FILES = "deleteOldFiles"; //$NON-NLS-1$
+	private static final String ATTTRIBUTE_STRICT_HOST_KEY_CHECKING = "strictHostKeyChecking"; //$NON-NLS-1$
+	private static final String DEFAULT_SSH_KEY_FILE = System
+			.getProperty("user.home") //$NON-NLS-1$
+			+ "/.ssh/id_rsa"; //$NON-NLS-1$
+	private static final String DEFAULT_SSH_KNOWN_HOSTS = System
+			.getProperty("user.home") //$NON-NLS-1$
+			+ "/.ssh/known_hosts"; //$NON-NLS-1$
 	private static final int DEFAULT_SSH_PORT = 22;
 	private static final String DTD_FILENAME = "configuration.dtd"; //$NON-NLS-1$
+	private static final String ELEMENT_DEFAULTS = "defaults"; //$NON-NLS-1$
+	private static final String ELEMENT_DEPLOY = "deploy"; //$NON-NLS-1$
+	private static final String ELEMENT_FILES = "files"; //$NON-NLS-1$
+	private static final String ELEMENT_HOSTNAME = "hostname"; //$NON-NLS-1$
+	private static final String ELEMENT_INSTALLATION_DIRECTORY = "installationDirectory"; //$NON-NLS-1$
+	private static final String ELEMENT_KNOWN_HOSTS = "knownHostsPath"; //$NON-NLS-1$
+	private static final String ELEMENT_NODE = "node"; //$NON-NLS-1$
+	private static final String ELEMENT_NODES = "nodes"; //$NON-NLS-1$
+	private static final String ELEMENT_PORT = "port"; //$NON-NLS-1$
 
-	/*
-	 * TODO Split XML reading from configuration building. Receive DTD as a
-	 * parameter and validate
-	 */
-	public class ConfigurationReadError extends Exception {
-		private static final long serialVersionUID = -1811782607636476052L;
+	private static final String ELEMENT_SSH = "ssh"; //$NON-NLS-1$
 
-		public ConfigurationReadError(String message, Throwable cause) {
-			super(message, cause);
-		}
-	}
+	private static final String ELEMENT_SSH_KEY_FILE = "sshKeyFile"; //$NON-NLS-1$
 
-	private class MyErrorHandler implements ErrorHandler {
+	private static final String ELEMENT_USERNAME = "username"; //$NON-NLS-1$
 
-		public MyErrorHandler() {
-
-		}
-
-		@Override
-		public void error(SAXParseException e) throws SAXException {
-			throw e;
-		}
-
-		@Override
-		public void fatalError(SAXParseException e) throws SAXException {
-			throw e;
-		}
-
-		@Override
-		public void warning(SAXParseException e) throws SAXException {
-			throw e;
-		}
-	}
+	private static final String YES = "yes"; //$NON-NLS-1$
 
 	private static InstallerConfiguration generateConfigurationFrom(
 			Document document) {
 		InstallerConfiguration conf = new InstallerConfiguration();
-		String defaultUsername, defaultInstallationDirectory;
-		Element defaults = (Element) document
-				.getElementsByTagName(DEFAULTS_TAG).item(0);
-		defaultUsername = defaults.getElementsByTagName(USERNAME_TAG).item(0)
-				.getTextContent();
-		defaultInstallationDirectory = defaults
-				.getElementsByTagName(INSTALLATION_DIRECTORY_TAG).item(0)
-				.getTextContent();
-		Element nodes = (Element) document.getElementsByTagName(NODES_TAG)
-				.item(0);
-		NodeList nodeList = nodes.getElementsByTagName(NODE_TAG);
-		for (int i = 0; i < nodeList.getLength(); i++) {
-			String installationDirectory, username, hostname;
-			Integer port;
-			Element node = (Element) nodeList.item(i);
-			installationDirectory = getInstallationDirectoryFrom(node,
-					defaultInstallationDirectory);
-			username = getUsernameFrom(node, defaultUsername);
-			hostname = getHostnameFrom(node);
-			port = getPortFrom(node);
-			conf.addHost(new Host(installationDirectory, username, hostname,
-					port));
-		}
-		Element ssh = (Element) document.getElementsByTagName(SSH_TAG).item(0);
-		if (ssh != null) {
-			Element sshKeyFile = (Element) ssh.getElementsByTagName(
-					KEY_FILE_TAG).item(0);
-			if (sshKeyFile != null) {
-				conf.setSshKeyFile(sshKeyFile.getTextContent());
-			}
-		}
+		getNodeConfiguration(document, conf,
+				getDefaultNodeConfiguration(document));
+		getSSHConfiguration(document, conf);
+		getFileList(document, conf);
+		getDeployConfiguration(document, conf);
+		return conf;
+	}
 
-		Element files = (Element) document.getElementsByTagName(FILES_TAG)
+	private static Map<String, String> getDefaultNodeConfiguration(
+			Document document) {
+		Map<String, String> defaults;
+		defaults = new HashMap<>(2);
+		defaults.put(ELEMENT_USERNAME, ((Element) document
+				.getElementsByTagName(ELEMENT_DEFAULTS).item(0))
+				.getElementsByTagName(ELEMENT_USERNAME).item(0)
+				.getTextContent());
+		defaults.put(ELEMENT_INSTALLATION_DIRECTORY, ((Element) document
+				.getElementsByTagName(ELEMENT_DEFAULTS).item(0))
+				.getElementsByTagName(ELEMENT_INSTALLATION_DIRECTORY).item(0)
+				.getTextContent());
+		return defaults;
+	}
+
+	private static void getDeployConfiguration(Document document,
+			InstallerConfiguration conf) {
+		Element deploy = (Element) document
+				.getElementsByTagName(ELEMENT_DEPLOY).item(0);
+		conf.setDeleteOldFiles(deploy.getAttribute(ATTRIBUTE_DELETE_OLD_FILES)
+				.equals(YES));
+		conf.setDeleteBundles(deploy.getAttribute(ATTRIBUTE_DELETE_BUNDLES)
+				.equals(YES));
+
+	}
+
+	private static void getFileList(Document document,
+			InstallerConfiguration conf) {
+		Element files = (Element) document.getElementsByTagName(ELEMENT_FILES)
 				.item(0);
 
 		for (int i = 0; i < files.getChildNodes().getLength(); i++) {
@@ -114,101 +88,73 @@ public class ConfigurationReader {
 				conf.getFiles().put(key, value);
 			}
 		}
-		return conf;
 	}
 
-	private static String getHostnameFrom(Element node) {
-		return node.getElementsByTagName(HOSTNAME_TAG).item(0).getTextContent();
+	private static void getNodeConfiguration(Document document,
+			InstallerConfiguration conf, Map<String, String> defaults) {
+		NodeList nodeList = ((Element) document.getElementsByTagName(
+				ELEMENT_NODES).item(0)).getElementsByTagName(ELEMENT_NODE);
+		for (int i = 0; i < nodeList.getLength(); i++) {
+			Element node = (Element) nodeList.item(i);
+			String username = getValueFromChild(node, ELEMENT_USERNAME,
+					defaults.get(ELEMENT_USERNAME));
+			String installationDirectory = getValueFromChild(node,
+					ELEMENT_INSTALLATION_DIRECTORY,
+					defaults.get(ELEMENT_INSTALLATION_DIRECTORY));
+			String hostname = getValueFromChild(node, ELEMENT_HOSTNAME);
+			Integer port = getValueFromChild(node, ELEMENT_PORT,
+					DEFAULT_SSH_PORT);
+			conf.addHost(new Host(installationDirectory, username, hostname,
+					port));
+		}
 	}
 
-	private static String getInstallationDirectoryFrom(Element node,
-			String defaultInstallationDirectory) {
-		Node value = node.getElementsByTagName(INSTALLATION_DIRECTORY_TAG)
+	private static void getSSHConfiguration(Document document,
+			InstallerConfiguration conf) {
+		Element ssh = (Element) document.getElementsByTagName(ELEMENT_SSH)
 				.item(0);
-		if (value == null)
-			return defaultInstallationDirectory;
-		return value.getTextContent();
+		conf.setSshKeyFile(getValueFromChild(ssh, ELEMENT_SSH_KEY_FILE,
+				DEFAULT_SSH_KEY_FILE));
+		conf.setSshKnownHosts(getValueFromChild(ssh, ELEMENT_KNOWN_HOSTS,
+				DEFAULT_SSH_KNOWN_HOSTS));
+		conf.setStrictHostKeyChecking(ssh
+				.getAttribute(ATTTRIBUTE_STRICT_HOST_KEY_CHECKING));
 	}
 
-	private static Integer getPortFrom(Element node) {
-		Node value = node.getElementsByTagName(PORT_TAG).item(0);
+	private static String getValueFromChild(Element node, String tag) {
+		return node.getElementsByTagName(tag).item(0).getTextContent();
+	}
+
+	private static Integer getValueFromChild(Element node, String tag,
+			Integer defaultValue) {
+		Node value = node.getElementsByTagName(tag).item(0);
 		if (value == null)
-			return DEFAULT_SSH_PORT;
+			return defaultValue;
 		return Integer.parseInt(value.getTextContent());
 	}
 
-	private static String getUsernameFrom(Element node, String defaultUsername) {
-		Node value = node.getElementsByTagName(USERNAME_TAG).item(0);
+	private static String getValueFromChild(Element node, String tag,
+			String defaultValue) {
+		Node value = node.getElementsByTagName(tag).item(0);
 		if (value == null)
-			return defaultUsername;
+			return defaultValue;
 		return value.getTextContent();
 	}
 
-	private Document parse(FileObject xmlDocument)
+	/**
+	 * 
+	 * @param xmlDocument
+	 * @return the installer configuration object.
+	 * @throws ConfigurationReadError
+	 * 
+	 *             There is no null validation for the XML elements because the
+	 *             incoming document is supposed to have been validated against
+	 *             a DTD (DTD_FILENAME).
+	 *
+	 */
+	public static InstallerConfiguration readFrom(FileObject xmlDocument)
 			throws ConfigurationReadError {
-		DOMParser parser = new DOMParser();
-		MyErrorHandler errorHandler = new MyErrorHandler();
-		parser.setErrorHandler(errorHandler);
-		try {
-			// Force validation against DTD
-			parser.setFeature("http://xml.org/sax/features/validation", true); //$NON-NLS-1$
-			parser.parse(new XMLInputSource(null, null, null, xmlDocument
-					.getContent().getInputStream(), FILE_ENCODING));
-		} catch (SAXNotRecognizedException | SAXNotSupportedException e) {
-			throw new ConfigurationReadError(
-					Messages.getString("ConfigurationReader.ErrorConfiguring"), e); //$NON-NLS-1$
-		} catch (XNIException | IOException e) {
-			throw new ConfigurationReadError(
-					MessageFormat.format(Messages.getString("ConfigurationReader.ErrorReadingFile"), //$NON-NLS-1$
-							xmlDocument.getName().getURI()), e);
-		}
-		return parser.getDocument();
-	}
-
-	public InstallerConfiguration readFrom(FileObject xmlDocument)
-			throws ConfigurationReadError {
-		Document document = parse(xmlDocument);
-		validate(document.getDoctype());
-		InstallerConfiguration conf = generateConfigurationFrom(document);
-		return conf;
-	}
-
-	private void validate(DocumentType doctype) throws ConfigurationReadError {
-		if (doctype == null) {
-			String dtdFileReference = MessageFormat.format(
-					"<!DOCTYPE configuration SYSTEM \"{0}\">", //$NON-NLS-1$
-					DTD_FILENAME);
-			throw new ConfigurationReadError(MessageFormat.format(
-					Messages.getString("ConfigurationReader.MissingDTDReference"), //$NON-NLS-1$
-					DTD_FILENAME, dtdFileReference), null);
-		}
-		String expectedDtd;
-		try {
-			expectedDtd = IOUtils.toString(this.getClass().getResourceAsStream(
-					DTD_FILENAME));
-
-		} catch (IOException e) {
-			throw new ConfigurationReadError(
-					MessageFormat.format(
-							Messages.getString("ConfigurationReader.MissingDTDResource"), //$NON-NLS-1$
-							DTD_FILENAME), null);
-		}
-		try {
-			FileObject dtdFile = VFS.getManager().resolveFile(
-					MessageFormat.format("file:/{0}/{1}", //$NON-NLS-1$
-							System.getProperty("user.dir"), DTD_FILENAME)); //$NON-NLS-1$
-			String content = IOUtils.toString(dtdFile.getContent()
-					.getInputStream(), FILE_ENCODING);
-			if (!content.equals(expectedDtd)) {
-				throw new ConfigurationReadError(
-						MessageFormat.format(
-								Messages.getString("ConfigurationReader.DTDDoentMatch"), //$NON-NLS-1$
-								DTD_FILENAME, expectedDtd), null);
-			}
-		} catch (IOException e) {
-			throw new ConfigurationReadError(MessageFormat.format(
-					Messages.getString("ConfigurationReader.MissingDTDFile"), //$NON-NLS-1$
-					DTD_FILENAME, expectedDtd), null);
-		}
+		Document document = XMLDocumentReader.parse(xmlDocument, DTD_FILENAME);
+		return generateConfigurationFrom(document);
 	}
 }

@@ -8,7 +8,6 @@ import java.util.Map.Entry;
 import java.util.Observable;
 import java.util.Observer;
 
-import org.apache.commons.logging.Log;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSelectInfo;
 import org.apache.commons.vfs2.FileSelector;
@@ -34,31 +33,51 @@ public class DeployInstallationFiles {
 	public void run() throws InstallationError {
 		FileObject dependenciesFolder;
 		this.installer.getLog().trace(
-				MessageFormat.format(
-						Messages.getString("DeployInstallationFiles.DeployingStarted"), //$NON-NLS-1$
-						this.host.getHostname()));
+				"DeployInstallationFiles.DeployingStarted", //$NON-NLS-1$
+				this.host.getHostname());
 		try {
 			dependenciesFolder = this.installer.getLocalDirectory()
 					.resolveFile(HadoopInstaller.TGZ_BUNDLES_FOLDER);
 		} catch (FileSystemException e) {
-			throw new InstallationError(
-					MessageFormat.format(Messages.getString("DeployInstallationFiles.CouldNotOpenFile"), //$NON-NLS-1$
-							HadoopInstaller.TGZ_BUNDLES_FOLDER), e);
+			throw new InstallationError(e,
+					"DeployInstallationFiles.CouldNotOpenFile", //$NON-NLS-1$
+					HadoopInstaller.TGZ_BUNDLES_FOLDER);
+		}
+		if (this.installer.getConfig().deleteOldFiles()) {
+			try {
+				/*
+				 * Current version of commons-vfs can not delete symlinks to a
+				 * folder because it thinks of them as a folder and then fails
+				 * to delete them.
+				 * 
+				 * Workaround, connect and do rm -rf
+				 */
+				// this.remoteDirectory.delete(new AllFileSelector());
+				SshCommandExecutor command = new SshCommandExecutor(
+						this.session);
+				command.execute(MessageFormat.format("rm -rf {0}/*", //$NON-NLS-1$
+						this.remoteDirectory.getName().getPath()));
+			} catch (ExecutionError e) {
+				throw new InstallationError(e,
+						"DeployInstallationFiles.CouldNotDeleteOldFiles", //$NON-NLS-1$
+						this.remoteDirectory.getName().getURI());
+			}
+			this.installer.getLog().info(
+					"DeployInstallationFiles.DeletingOldFiles", //$NON-NLS-1$
+					this.remoteDirectory.getName().getURI());
 		}
 		uploadFiles(dependenciesFolder);
 		decompressFiles();
-		// TODO Delete uploaded files (from config)
 		try {
 			dependenciesFolder.close();
 		} catch (FileSystemException e) {
 			this.installer.getLog().warn(
-					MessageFormat.format(Messages.getString("DeployInstallationFiles.CouldNotCloseFile"), //$NON-NLS-1$
-							dependenciesFolder.getName().getURI()));
+					"DeployInstallationFiles.CouldNotCloseFile", //$NON-NLS-1$
+					dependenciesFolder.getName().getURI());
 		}
 		this.installer.getLog().debug(
-				MessageFormat.format(
-						Messages.getString("DeployInstallationFiles.DeployingFinished"), //$NON-NLS-1$
-						this.host.getHostname()));
+				"DeployInstallationFiles.DeployingFinished", //$NON-NLS-1$
+				this.host.getHostname());
 	}
 
 	private void decompressFiles() throws InstallationError {
@@ -67,20 +86,31 @@ public class DeployInstallationFiles {
 			String fileName = fileEntry.getValue();
 			String linkName = fileEntry.getKey();
 			String commandString = MessageFormat
-					.format("cd {0}; tar -zxf {1}; ln -fs {2} {3}", this.host.getInstallationDirectory(), fileName, this.installer.getDirectories().get(linkName), linkName); //$NON-NLS-1$
+					.format("cd {0}; tar -zxf {1}; mv {2} {3}", this.host.getInstallationDirectory(), fileName, this.installer.getDirectories().get(linkName), linkName); //$NON-NLS-1$
 			SshCommandExecutor command = new SshCommandExecutor(this.session);
 			try {
 				command.execute(commandString);
 			} catch (ExecutionError e) {
-				throw new InstallationError(MessageFormat.format(
-						Messages.getString("DeployInstallationFiles.ErrorDecompressingFiles"), //$NON-NLS-1$
-						this.host.getHostname()), e);
+				throw new InstallationError(e,
+						"DeployInstallationFiles.ErrorDecompressingFiles", //$NON-NLS-1$
+						this.host.getHostname());
 			}
 			if (!command.getOutput().isEmpty()) {
 				for (String line : command.getOutput()) {
 					this.installer.getLog().trace(line);
 				}
 			}
+			if (this.installer.getConfig().deleteBundles())
+				try {
+					this.remoteDirectory.resolveFile(fileName).delete();
+					this.installer.getLog().info(
+							"DeployInstallationFiles.DeletingBundle", fileName, //$NON-NLS-1$
+							this.remoteDirectory.getName().getURI());
+				} catch (FileSystemException e) {
+					throw new InstallationError(e,
+							"DeployInstallationFiles.CouldNotDeleteBundle", //$NON-NLS-1$
+							fileName, this.remoteDirectory.getName().getURI());
+				}
 		}
 	}
 
@@ -101,9 +131,9 @@ public class DeployInstallationFiles {
 		try {
 			this.remoteDirectory.copyFrom(dependenciesFolder, selector);
 		} catch (FileSystemException e) {
-			throw new InstallationError(MessageFormat.format(
-					Messages.getString("DeployInstallationFiles.ErrorUploadingFiles"), this.host.getHostname()), //$NON-NLS-1$
-					e);
+			throw new InstallationError(e,
+					"DeployInstallationFiles.ErrorUploadingFiles", //$NON-NLS-1$
+					this.host.getHostname());
 		}
 		selector.deleteObserver(observer);
 	}
@@ -234,10 +264,11 @@ public class DeployInstallationFiles {
 
 	public class MD5ComparingSelectorLogger implements Observer {
 
-		private Log log;
+		private MessageFormattingLog log;
 
-		public MD5ComparingSelectorLogger(Log aLog) {
-			this.log = aLog;
+		public MD5ComparingSelectorLogger(
+				MessageFormattingLog messageFormattingLog) {
+			this.log = messageFormattingLog;
 		}
 
 		@Override
@@ -245,49 +276,48 @@ public class DeployInstallationFiles {
 			Result result = (Result) anObject;
 			switch (result.getReason()) {
 			case COULD_NOT_CALCULATE_MD5:
-				this.log.debug(MessageFormat.format(
-						Messages.getString("DeployInstallationFiles.MD5CouldNotBeCalculated"), //$NON-NLS-1$
-						result.getFileName()));
+				this.log.debug(
+						"DeployInstallationFiles.MD5CouldNotBeCalculated", //$NON-NLS-1$
+						result.getFileName());
 				if (result.hasDescription()) {
 					this.log.debug(result.getDescription().trim());
 				}
 				break;
 			case FILE_NOT_IN_UPLOAD_LIST:
-				this.log.debug(MessageFormat
-						.format(Messages.getString("DeployInstallationFiles.FileNotInConfigurationFile"), //$NON-NLS-1$
-								result.getFileName(),
-								HadoopInstaller.TGZ_BUNDLES_FOLDER,
-								HadoopInstaller.CONFIGURATION_FILE));
+				this.log.debug(
+						"DeployInstallationFiles.FileNotInConfigurationFile", //$NON-NLS-1$
+						result.getFileName(),
+						HadoopInstaller.TGZ_BUNDLES_FOLDER,
+						HadoopInstaller.CONFIGURATION_FILE);
 				break;
 			case MD5_DOES_NOT_MATCH:
-				this.log.debug(MessageFormat.format(
-						Messages.getString("DeployInstallationFiles.MD5DoesNotMatch"), result.getFileName())); //$NON-NLS-1$
+				this.log.debug(
+						"DeployInstallationFiles.MD5DoesNotMatch", result.getFileName()); //$NON-NLS-1$
 				break;
 			case MD5_MATCHES:
-				this.log.debug(MessageFormat.format(Messages.getString("DeployInstallationFiles.MD5Matches"), //$NON-NLS-1$
-						result.getFileName()));
+				this.log.debug("DeployInstallationFiles.MD5Matches", //$NON-NLS-1$
+						result.getFileName());
 				break;
 			case FILE_NOT_PRESENT:
-				this.log.debug(MessageFormat.format(
-						Messages.getString("DeployInstallationFiles.FileNotPresent"), result.getFileName())); //$NON-NLS-1$
+				this.log.debug(
+						"DeployInstallationFiles.FileNotPresent", result.getFileName()); //$NON-NLS-1$
 				break;
 			case COULD_NOT_DETERMINE_FILE_EXISTANCE:
-				this.log.debug(MessageFormat.format(
-						Messages.getString("DeployInstallationFiles.CouldNotDetermineFileExistance"), //$NON-NLS-1$
-						result.getFileName()));
+				this.log.debug(
+						"DeployInstallationFiles.CouldNotDetermineFileExistance", //$NON-NLS-1$
+						result.getFileName());
 				break;
 			default:
-				this.log.warn(MessageFormat.format(
-						Messages.getString("DeployInstallationFiles.UnhandledSwitchCase"), //$NON-NLS-1$
-						result.getFileName(), result.getReason().toString()));
+				this.log.warn("DeployInstallationFiles.UnhandledSwitchCase", //$NON-NLS-1$
+						result.getFileName(), result.getReason().toString());
 				break;
 			}
 			if (result.isIncluded()) {
-				this.log.debug(MessageFormat.format(Messages.getString("DeployInstallationFiles.UploadingFile"), //$NON-NLS-1$
-						result.getFileName()));
+				this.log.debug("DeployInstallationFiles.UploadingFile", //$NON-NLS-1$
+						result.getFileName());
 			} else {
-				this.log.debug(MessageFormat.format(Messages.getString("DeployInstallationFiles.SkippingFile"), //$NON-NLS-1$
-						result.getFileName()));
+				this.log.debug("DeployInstallationFiles.SkippingFile", //$NON-NLS-1$
+						result.getFileName());
 			}
 		}
 	}

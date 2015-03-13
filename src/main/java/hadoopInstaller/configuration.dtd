@@ -1,4 +1,4 @@
-<!ELEMENT configuration (defaults,nodes,ssh,files)>
+<!ELEMENT configuration (defaults,nodes,ssh,files,deploy)>
 <!ELEMENT defaults (username,installationDirectory)>
 <!ELEMENT nodes (node+)>
 <!ELEMENT node (hostname,port?,username?,installationDirectory?)>
@@ -6,8 +6,13 @@
 <!ELEMENT port (#PCDATA)>
 <!ELEMENT username (#PCDATA)>
 <!ELEMENT installationDirectory (#PCDATA)>
-<!ELEMENT ssh (sshKeyFile?)>
+<!ELEMENT ssh (sshKeyFile?,knownHostsPath?,strictHostKeyChecking?)>
+<!ATTLIST ssh strictHostKeyChecking (yes|no) "yes">
 <!ELEMENT sshKeyFile (#PCDATA)>
+<!ELEMENT knownHostsPath (#PCDATA)>
 <!ELEMENT files (hadoop,java)>
 <!ELEMENT hadoop (#PCDATA)>
 <!ELEMENT java (#PCDATA)>
+<!ELEMENT deploy EMPTY>
+<!ATTLIST deploy deleteOldFiles (yes|no) "no">
+<!ATTLIST deploy deleteBundles (yes|no) "no">

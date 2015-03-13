@@ -8,11 +8,13 @@ import java.util.Map;
 
 public class InstallerConfiguration {
 
+	private boolean deleteBundles;
+	private boolean deleteOldFiles;
 	private Map<String, String> files;
-
-	List<Host> nodes;
-
-	String sshKeyFile;
+	private List<Host> nodes;
+	private String sshKeyFile;
+	private String sshKnownHosts;
+	private String strictHostKeyChecking;
 
 	public InstallerConfiguration() {
 		this.nodes = new LinkedList<>();
@@ -22,6 +24,14 @@ public class InstallerConfiguration {
 
 	public void addHost(Host node) {
 		this.nodes.add(node);
+	}
+
+	public boolean deleteBundles() {
+		return this.deleteBundles;
+	}
+
+	public boolean deleteOldFiles() {
+		return this.deleteOldFiles;
 	}
 
 	public Map<String, String> getFiles() {
@@ -36,7 +46,31 @@ public class InstallerConfiguration {
 		return this.sshKeyFile;
 	}
 
+	public String getSshKnownHosts() {
+		return this.sshKnownHosts;
+	}
+
+	public String getStrictHostKeyChecking() {
+		return this.strictHostKeyChecking;
+	}
+
+	public void setDeleteBundles(boolean doDeleteBundles) {
+		this.deleteBundles = doDeleteBundles;
+	}
+
+	public void setDeleteOldFiles(boolean b) {
+		this.deleteOldFiles = b;
+	}
+
 	public void setSshKeyFile(String value) {
 		this.sshKeyFile = value;
+	}
+
+	public void setSshKnownHosts(String value) {
+		this.sshKnownHosts = value;
+	}
+
+	public void setStrictHostKeyChecking(String value) {
+		this.strictHostKeyChecking = value;
 	}
 }

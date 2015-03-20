@@ -83,7 +83,7 @@ public class HostInstallation {
 			throw new InstallationError(e, "HostInstallation.Upload.Error", //$NON-NLS-1$
 					remoteDirectory.getName().getURI());
 		}
-		this.installer.getLog().debug("HostInstallation.Upload.Host", //$NON-NLS-1$
+		this.installer.getLog().info("HostInstallation.Upload.Host", //$NON-NLS-1$
 				this.host.getHostname());
 	}
 
@@ -157,7 +157,7 @@ public class HostInstallation {
 	private FileObject sftpConnect() throws InstallationError {
 		FileObject remoteDirectory;
 		this.installer.getLog().trace("HostInstallation.SFTP.Connect.Start", //$NON-NLS-1$
-				this.host.getHostname());
+				this.host.getHostname(), this.host.getUsername());
 		try {
 			String uri = new URI("sftp", this.host.getUsername(), //$NON-NLS-1$
 					this.host.getHostname(), this.host.getPort(),
@@ -175,17 +175,17 @@ public class HostInstallation {
 			}
 		} catch (FileSystemException e) {
 			throw new InstallationError(e, "HostInstallation.CouldNotCreate", //$NON-NLS-1$
-					remoteDirectory.getName().getURI());
+					remoteDirectory.getName().getURI(), this.host.getUsername());
 		}
 		this.installer.getLog().debug("HostInstallation.SFTP.Connect.Success", //$NON-NLS-1$
-				this.host.getHostname());
+				this.host.getHostname(), this.host.getUsername());
 		return remoteDirectory;
 	}
 
 	private Session sshConnect() throws InstallationError {
 		Session session = null;
 		this.installer.getLog().trace("HostInstallation.SSH.Connect.Start", //$NON-NLS-1$
-				this.host.getHostname());
+				this.host.getHostname(), this.host.getUsername());
 		try {
 			session = this.installer.getSsh().getSession(
 					this.host.getUsername(), this.host.getHostname(),
@@ -193,10 +193,10 @@ public class HostInstallation {
 			session.connect();
 		} catch (JSchException e) {
 			throw new InstallationError(e, "HostInstallation.SSH.Connect.Fail", //$NON-NLS-1$
-					this.host.getHostname());
+					this.host.getHostname(), this.host.getUsername());
 		}
 		this.installer.getLog().debug("HostInstallation.SSH.Connect.Success", //$NON-NLS-1$
-				this.host.getHostname());
+				this.host.getHostname(), this.host.getUsername());
 		return session;
 	}
 }

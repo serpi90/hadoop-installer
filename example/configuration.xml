@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+	<!-- All the children elements of "configuration" are mandatory -->
+	<defaults>
+		<username>hadoop</username>
+		<!-- Mandatory, default username for all the hosts if a custom username 
+			is not provided -->
+		<installationDirectory>/home/hadoop</installationDirectory>
+		<!-- Mandatory, default installation directory for all the hosts if a custom 
+			installation directory is not provided -->
+	</defaults>
+	<nodes> <!-- At least 1 node must be defined -->
+		<node id="master"><!-- id is not required, but must be unique and start with 
+				a letter -->
+			<hostname>host1</hostname>
+			<!-- Mandatory -->
+
+			<port>22</port>
+			<!-- Optional, defaults to 22 if element is absent -->
+
+			<username>apache</username>
+			<!-- Optional, if element is absent, defaults/username is used instead -->
+
+			<installationDirectory>/home/hadoop/installation</installationDirectory>
+			<!-- Optional, if element is absent defaults/installationDirectory is 
+				used instead -->
+		</node>
+		<node id="backup">
+			<hostname>host2</hostname>
+		</node>
+	</nodes>
+	<architecture>
+		<namenode id="master" />
+		<!-- id is a reference to the node with that id -->
+		<secondaryNamenode id="backup" />
+		<!-- id is a reference to the node with that id -->
+		<resourceManager id="master" />
+		<!-- id is a reference to the node with that id -->
+		<secondaryResourceManager id="backup" />
+		<!-- id is a reference to the node with that id -->
+	</architecture>
+	<ssh strictHostKeyChecking="true">
+		<!-- Attribute strictHostKeyChecking values: (yes,no) Wether to care about 
+			known_hosts or not, this setting applies during the installation, not for 
+			Hadoop runtime. If attribute is absent defaults to "yes". -->
+
+		<sshKeyFile>/home/$USER/.ssh/id_rsa</sshKeyFile>
+		<!-- Optional. Must be absolute The private SSH key to use for authentication 
+			If element is absent defaults to /home/$USER/.ssh/id_rsa -->
+		<!-- $USER env_var will NOT be replaced, it's only there for explanatory 
+			purpouses -->
+
+		<knownHostsPath>/home/$USER/.ssh/known_hosts</knownHostsPath>
+		<!-- Optional. Must be absolute. The known_hosts file to use if strictHostKeyChecking 
+			is set to yes. If element is absent defaults to ~/.ssh/known_hosts -->
+		<!-- $USER env_var will NOT be replaced, it's only there for explanatory 
+			purpouses -->
+	</ssh>
+	<files>
+		<!-- All paths in this list are relative to the "dependencies" folder -->
+
+		<hadoop>hadoop-2.5.1.tar.gz</hadoop>
+		<!-- Mandatory. A tar.gz hadoop installation bundle. -->
+
+		<java>jre-7u67-linux-x64.tar.gz</java>
+		<!-- Mandatory. A tar.gz java installation bundle. -->
+	</files>
+
+	<deploy deleteOldFiles="false" deleteBundles="false" />
+	<!-- Element MUST be an empty tag (not an open/close tag) -->
+	<!-- Attribute deleteOldFiles values: (yes,no) Wether to delete the folder 
+		contents first or just decompress the bundles in the destination folder. 
+		If attribute is absents defaults to "no" -->
+	<!-- Attribute deleteBundles values: (yes,no) Wether to delete the installation 
+		bundles after decompressing them or not. If attribute is absents defaults 
+		to "no" -->
+</configuration>

@@ -1,5 +1,6 @@
 /target/
 /configuration.xml
 /configuration.dtd
-/dependencies/*
-/hadoop-etc/*
+/dependencies/
+/hadoop-etc/
+installation.log

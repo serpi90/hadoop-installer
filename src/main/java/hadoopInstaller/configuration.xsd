@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+	elementFormDefault="qualified">
+	<xs:complexType name="t_configuration">
+		<xs:all>
+			<xs:element name="defaults" type="t_defaults" />
+			<xs:element name="nodes" type="t_nodes" />
+			<xs:element name="architecture" type="t_architecture" />
+			<xs:element name="ssh" type="t_ssh" />
+			<xs:element name="files" type="t_files" />
+			<xs:element name="deploy" type="t_deploy" />
+		</xs:all>
+	</xs:complexType>
+	<xs:complexType name="t_defaults">
+		<xs:all>
+			<xs:element name="username" type="xs:string" />
+			<xs:element name="installationDirectory" type="xs:string" />
+		</xs:all>
+	</xs:complexType>
+	<xs:complexType name="t_nodes">
+		<xs:sequence>
+			<xs:element name="node" type="t_node" minOccurs="1"
+				maxOccurs="unbounded" />
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="t_node">
+		<xs:all>
+			<xs:element name="hostname" type="xs:string" />
+			<xs:element name="port" type="xs:short" default="22"
+				maxOccurs="1" minOccurs="0" />
+			<xs:element name="username" type="xs:string" maxOccurs="1"
+				minOccurs="0" />
+			<xs:element name="installationDirectory" type="xs:string"
+				maxOccurs="1" minOccurs="0" />
+		</xs:all>
+		<xs:attribute name="id" type="xs:ID" use="optional" />
+	</xs:complexType>
+	<xs:complexType name="t_architecture">
+		<xs:all>
+			<xs:element name="namenode" type="t_nodeReference" />
+			<xs:element name="secondaryNamenode" type="t_nodeReference"
+				maxOccurs="1" minOccurs="0" />
+			<xs:element name="resourceManager" type="t_nodeReference" />
+			<xs:element name="secondaryResourceManager" type="t_nodeReference"
+				maxOccurs="1" minOccurs="0" />
+		</xs:all>
+	</xs:complexType>
+	<xs:complexType name="t_nodeReference">
+		<xs:attribute name="id" type="xs:IDREF" />
+	</xs:complexType>
+	<xs:complexType name="t_ssh">
+		<xs:all>
+			<xs:element name="sshKeyFile" type="xs:string" maxOccurs="1"
+				minOccurs="0" />
+			<xs:element name="knownHostsPath" type="xs:string"
+				maxOccurs="1" minOccurs="0" />
+		</xs:all>
+		<xs:attribute name="strictHostKeyChecking" type="xs:boolean"
+			default="true" />
+	</xs:complexType>
+	<xs:complexType name="t_files">
+		<xs:all>
+			<xs:element name="hadoop" type="xs:string" />
+			<xs:element name="java" type="xs:string" />
+		</xs:all>
+	</xs:complexType>
+	<xs:complexType name="t_deploy">
+		<xs:attribute name="deleteOldFiles" type="xs:boolean"
+			default="true" />
+		<xs:attribute name="deleteBundles" type="xs:boolean"
+			default="true" />
+	</xs:complexType>
+
+	<xs:element name="configuration" type="t_configuration"></xs:element>
+</xs:schema>

@@ -67,9 +67,11 @@
 	</xs:complexType>
 	<xs:complexType name="t_deploy">
 		<xs:attribute name="deleteOldFiles" type="xs:boolean"
-			default="true" />
+			default="false" />
+		<xs:attribute name="deleteOldConfiguration" type="xs:boolean"
+			default="false" />
 		<xs:attribute name="deleteBundles" type="xs:boolean"
-			default="true" />
+			default="false" />
 	</xs:complexType>
 
 	<xs:element name="configuration" type="t_configuration"></xs:element>

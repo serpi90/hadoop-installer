@@ -15,6 +15,7 @@ public class InstallerConfiguration {
 	private String sshKeyFile;
 	private String sshKnownHosts;
 	private boolean strictHostKeyChecking;
+	private boolean deleteOldConfigurationFiles;
 
 	public InstallerConfiguration() {
 		this.nodes = new LinkedList<>();
@@ -72,5 +73,13 @@ public class InstallerConfiguration {
 
 	public void setStrictHostKeyChecking(boolean b) {
 		this.strictHostKeyChecking = b;
+	}
+
+	public boolean deleteOldConfigurationFiles() {
+		return this.deleteOldConfigurationFiles;
+	}
+
+	public void setDeleteOldConfigurationFiles(boolean b) {
+		this.deleteOldConfigurationFiles = b;
 	}
 }

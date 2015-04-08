@@ -12,12 +12,10 @@ public class PrintStreamLog extends SimpleLog {
 	public PrintStreamLog(String name, PrintStream aPrintStream) {
 		super(name);
 		this.printStream = aPrintStream;
-		// TODO Auto-generated constructor stub
 	}
 
 	@Override
 	protected void write(StringBuffer buffer) {
 		this.printStream.println(buffer.toString());
-		// TODO Also write to a file.
 	}
 }

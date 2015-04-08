@@ -83,7 +83,7 @@ public class HadoopInstaller {
 					getConfig().getSshKeyFile());
 		} catch (JSchException e) {
 			throw new InstallationFatalError(e,
-					"HadoopInstaller.Confiugre.SSH.Fail"); //$NON-NLS-1$
+					"HadoopInstaller.Configure.SSH.Fail"); //$NON-NLS-1$
 		}
 		getLog().debug("HadoopInstaller.Configure.SSH.Success"); //$NON-NLS-1$
 	}
@@ -178,9 +178,9 @@ public class HadoopInstaller {
 			}
 			return configurationSchema;
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			throw new InstallationFatalError(e, null);
+			throw new InstallationFatalError(e,
+					"HadoopInstaller.Configure.CouldNotReadFile", //$NON-NLS-1$
+					CONFIGURATION_SCHEMA);
 		}
 	}
 

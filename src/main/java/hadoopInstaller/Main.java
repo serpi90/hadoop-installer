@@ -60,9 +60,6 @@ public class Main {
 		 * 
 		 * Consider using a configuration that doesn't require password-less
 		 * authentication, but set's it up for the final cluster.
-		 * 
-		 * TODO write about SSH host key problems in README.md
-		 * http://anahorny.blogspot.com.ar/2013/05/solution-for-comjcraftjschjschexception.html
 		 */
 	}
 

@@ -31,12 +31,8 @@ public class XMLDocumentReader {
 			DocumentBuilder db = dbf.newDocumentBuilder();
 			db.setErrorHandler(new ParseErrorHandler());
 			return db.parse(xmlDocument.getContent().getInputStream());
-		} catch (ParserConfigurationException | SAXException e) {
-			// TODO Auto-generated catch block
-			throw new InstallerConfigurationParseError(e, ""); //$NON-NLS-1$
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			throw new InstallerConfigurationParseError(e, ""); //$NON-NLS-1$
+		} catch (ParserConfigurationException | SAXException | IOException e) {
+			throw new InstallerConfigurationParseError(e, "XMLDocumentReader.ParseError", xmlDocument.getName()); //$NON-NLS-1$
 		}
 	}
 }

@@ -11,7 +11,7 @@ import org.w3c.dom.NodeList;
 public class InstallerConfigurationParser {
 	private static final String ATTRIBUTE_DELETE_BUNDLES = "deleteBundles"; //$NON-NLS-1$
 	private static final String ATTRIBUTE_DELETE_OLD_FILES = "deleteOldFiles"; //$NON-NLS-1$
-	private static final String ATTRIBUTE_DELETE_OLD_CONFIGURATION_FILES = "deleteOldConfigurationFiles"; //$NON-NLS-1$
+	private static final String ATTRIBUTE_DELETE_OLD_CONFIGURATION_FILES = "deleteOldConfiguration"; //$NON-NLS-1$
 	private static final String ATTTRIBUTE_STRICT_HOST_KEY_CHECKING = "strictHostKeyChecking"; //$NON-NLS-1$
 	private static final String DEFAULT_SSH_KEY_FILE = System
 			.getProperty("user.home") //$NON-NLS-1$

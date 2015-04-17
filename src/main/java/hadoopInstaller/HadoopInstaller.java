@@ -203,24 +203,12 @@ public class HadoopInstaller {
 	}
 
 	private void generateConfigurationFiles() throws InstallationFatalError {
-		getLog().trace("HadoopInstaller.ConfigurationFilesToUpload.Loading", //$NON-NLS-1$
-				CONFIGURATION_FOLDER_TO_UPLOAD);
-		try {
-			this.configurationFilesToUpload = getLocalDirectory().resolveFile(
-					CONFIGURATION_FOLDER_TO_UPLOAD);
-			if (!this.configurationFilesToUpload.exists()) {
-				this.configurationFilesToUpload.createFolder();
-				getLog().warn(
-						"HadoopInstaller.ConfigurationFilesToUpload.FolderDoesntExist", //$NON-NLS-1$
-						CONFIGURATION_FOLDER_TO_UPLOAD);
-			}
-		} catch (FileSystemException e) {
-			throw new InstallationFatalError(
-					e,
-					"HadoopInstaller.ConfigurationFilesToUpload.FolderCouldNotOpen", //$NON-NLS-1$
-					CONFIGURATION_FOLDER_TO_UPLOAD);
-		}
-		getLog().debug("HadoopInstaller.ConfigurationFilesToUpload.Loaded"); //$NON-NLS-1$
+		this.getLog().trace("HadoopInstaller.ConfigurationFilesToUpload.Start"); //$NON-NLS-1$
+		// TODO! implement a new strategy that generates default files.
+		this.configurationFilesToUpload = new LoadFromFolder(
+				CONFIGURATION_FOLDER_TO_UPLOAD, this.getLocalDirectory(),
+				this.getLog()).generateConfigurationFiles();
+		this.getLog().debug("HadoopInstaller.ConfigurationFilesToUpload.End"); //$NON-NLS-1$
 	}
 
 	private void analyzeBundles() throws InstallationFatalError {
@@ -353,6 +341,11 @@ public class HadoopInstaller {
 
 	public FileObject getConfigurationFilesToUpload() {
 		return this.configurationFilesToUpload;
+	}
+
+	public void getConfigurationFilesToUpload(
+			FileObject someConfigurationFilesToUpload) {
+		this.configurationFilesToUpload = someConfigurationFilesToUpload;
 	}
 
 	public JSch getSsh() {

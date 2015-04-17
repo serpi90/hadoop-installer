@@ -66,12 +66,15 @@
 		<!-- Mandatory. A tar.gz java installation bundle. -->
 	</files>
 
-	<deploy deleteOldFiles="false" deleteBundles="false" />
+	<deploy deleteOldFiles="false" deleteOldConfiguration="false" deleteBundles="false" />
 	<!-- Element MUST be an empty tag (not an open/close tag) -->
-	<!-- Attribute deleteOldFiles values: (yes,no) Wether to delete the folder 
+	<!-- Attribute deleteOldConfiguration values: (true/false) Wether to delete the configuration
+		folder contents first or just overwrite the files being uploaded.
+		If attribute is absents defaults to "false" -->
+	<!-- Attribute deleteOldFiles values: (true/false) Wether to delete the folder 
 		contents first or just decompress the bundles in the destination folder. 
-		If attribute is absents defaults to "no" -->
-	<!-- Attribute deleteBundles values: (yes,no) Wether to delete the installation 
+		If attribute is absents defaults to "false" -->
+	<!-- Attribute deleteBundles values: (true/false) Wether to delete the installation 
 		bundles after decompressing them or not. If attribute is absents defaults 
-		to "no" -->
+		to "false" -->
 </configuration>

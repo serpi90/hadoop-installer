@@ -67,6 +67,8 @@ public class HostInstallation {
 					.resolveFile("hadoop/etc/hadoop/"); //$NON-NLS-1$
 			if (this.installer.getConfig().deleteOldConfigurationFiles()) {
 				configurationDirectory.delete(new AllFileSelector());
+				this.installer.getLog().debug("HostInstallation.Upload.DeletingOldFiles", //$NON-NLS-1$
+						this.host.getHostname());
 			} else if (!configurationDirectory.exists()) {
 				throw new InstallationError(
 						"HostInstallation.Upload.NotDeployed"); //$NON-NLS-1$

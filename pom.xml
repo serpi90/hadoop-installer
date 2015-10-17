@@ -6,6 +6,9 @@
 	<version>1.0</version>
 	<name>Hadoop Installer</name>
 	<description>A tool for installing and deploying configuration for Apache Hadoop on a linux cluster</description>
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+	</properties>
 	<build>
 		<pluginManagement>
 			<plugins>

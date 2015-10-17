@@ -37,7 +37,7 @@ Run with `java -jar HadoopInstaller.jar [-log:<level>] [-deploy]`
 		* Or, follow the instructions below.
 	- The host is in the provided _known\_hosts_ file but with a public key in a format different than rsa.
 		* To fix this, use the command `ssh-keyscan` to get the key in rsa format.
-		* `ssh-keyscan -t rsa >> /path/to/known_hosts`.
+		* `ssh-keyscan -t rsa hostname >> /path/to/known_hosts`.
 
 ## Contact ###
 

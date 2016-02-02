@@ -3,3 +3,6 @@
 /configuration.dtd
 /dependencies/*
 /hadoop-etc/*
+.classpath
+.project
+.settings

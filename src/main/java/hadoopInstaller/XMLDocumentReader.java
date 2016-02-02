@@ -21,15 +21,30 @@ public class XMLDocumentReader {
 			throws ConfigurationReadError {
 		DOMParser parser = new DOMParser();
 		parser.setErrorHandler(new ParseErrorHandler());
+		// Verify document includes DTD
+		String dtdFileReference = MessageFormat.format(
+				"<!DOCTYPE configuration SYSTEM \"{0}\">", dtdFilename); //$NON-NLS-1$
 		try {
-			// Force validation against DTD
-			parser.setFeature("http://xml.org/sax/features/validation", true); //$NON-NLS-1$
-			parser.parse(new XMLInputSource(null, null, null, xmlDocument
-					.getContent().getInputStream(), FILE_ENCODING));
-		} catch (SAXNotRecognizedException | SAXNotSupportedException e) {
-			throw new ConfigurationReadError(e,
-					"XMLDocumentReader.ErrorConfiguring"); //$NON-NLS-1$
-		} catch (XNIException | IOException e) {
+			if (!IOUtils.toString(xmlDocument.getContent().getInputStream(),
+					FILE_ENCODING).contains(dtdFileReference)) {
+				throw new ConfigurationReadError(
+						"XMLDocumentReader.MissingDTDReference", //$NON-NLS-1$
+						dtdFilename, dtdFileReference);
+			}
+			try {
+				// Force validation against DTD
+				parser.setFeature(
+						"http://xml.org/sax/features/validation", true); //$NON-NLS-1$
+				parser.parse(new XMLInputSource(null, null, null, xmlDocument
+						.getContent().getInputStream(), FILE_ENCODING));
+			} catch (SAXNotRecognizedException | SAXNotSupportedException e) {
+				throw new ConfigurationReadError(e,
+						"XMLDocumentReader.ErrorConfiguring"); //$NON-NLS-1$
+			}
+		} catch (XNIException e) {
+			throw new ConfigurationReadError(e, "XMLDocumentReader.XMLError", //$NON-NLS-1$
+					e.getMessage());
+		} catch (IOException e) {
 			throw new ConfigurationReadError(e,
 					"XMLDocumentReader.ErrorReadingFile", //$NON-NLS-1$
 					xmlDocument.getName().getURI());

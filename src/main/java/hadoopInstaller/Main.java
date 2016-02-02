@@ -25,7 +25,9 @@ public class Main {
 		try {
 			new HadoopInstaller(log, deploy).run();
 		} catch (InstallationFatalError e) {
-			log.fatal(e.getMessage(), e);
+			log.fatal(e.getLocalizedMessage());
+			log.fatal(e.getCause().getLocalizedMessage());
+			log.trace(e.getLocalizedMessage(), e);
 		}
 		/*
 		 * MAYBE ssh-ask

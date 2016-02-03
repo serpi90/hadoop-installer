@@ -18,8 +18,9 @@ public class MessageFormattingLog {
 	}
 
 	public void debug(Throwable t, String format, Object... arguments) {
-		this.log.debug(
-				MessageFormat.format(Messages.getString(format), arguments), t);
+		this.log.debug(MessageFormat.format(Messages.getString(format),
+				arguments) + " - " + t.getLocalizedMessage());
+		this.log.trace("trace", t);
 	}
 
 	public void error(String format, Object... arguments) {
@@ -28,8 +29,9 @@ public class MessageFormattingLog {
 	}
 
 	public void error(Throwable t, String format, Object... arguments) {
-		this.log.error(
-				MessageFormat.format(Messages.getString(format), arguments), t);
+		this.log.error(MessageFormat.format(Messages.getString(format),
+				arguments) + " - " + t.getLocalizedMessage());
+		this.log.trace("trace", t);
 	}
 
 	public void fatal(String format, Object... arguments) {
@@ -38,8 +40,9 @@ public class MessageFormattingLog {
 	}
 
 	public void fatal(Throwable t, String format, Object... arguments) {
-		this.log.fatal(
-				MessageFormat.format(Messages.getString(format), arguments), t);
+		this.log.fatal(MessageFormat.format(Messages.getString(format),
+				arguments) + " - " + t.getLocalizedMessage());
+		this.log.trace("trace", t);
 	}
 
 	public void info(String format, Object... arguments) {
@@ -48,8 +51,9 @@ public class MessageFormattingLog {
 	}
 
 	public void info(Throwable t, String format, Object... arguments) {
-		this.log.info(
-				MessageFormat.format(Messages.getString(format), arguments), t);
+		this.log.info(MessageFormat.format(Messages.getString(format),
+				arguments) + " - " + t.getLocalizedMessage());
+		this.log.trace("trace", t);
 	}
 
 	public boolean isDebugEnabled() {
@@ -83,7 +87,8 @@ public class MessageFormattingLog {
 
 	public void trace(Throwable t, String format, Object... arguments) {
 		this.log.trace(
-				MessageFormat.format(Messages.getString(format), arguments), t);
+				MessageFormat.format(Messages.getString(format), arguments)
+						+ " - " + t.getLocalizedMessage(), t);
 	}
 
 	public void warn(String format, Object... arguments) {
@@ -92,7 +97,8 @@ public class MessageFormattingLog {
 	}
 
 	public void warn(Throwable t, String format, Object... arguments) {
-		this.log.warn(
-				MessageFormat.format(Messages.getString(format), arguments), t);
+		this.log.warn(MessageFormat.format(Messages.getString(format),
+				arguments) + " - " + t.getLocalizedMessage());
+		this.log.trace("trace", t);
 	}
 }

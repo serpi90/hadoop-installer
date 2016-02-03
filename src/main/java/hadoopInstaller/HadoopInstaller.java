@@ -195,7 +195,8 @@ public class HadoopInstaller {
 			try {
 				new HostInstallation(host, this).run();
 			} catch (InstallationError e) {
-				getLog().error(e, "HadoopInstaller.Installation.HostFailed", //$NON-NLS-1$
+				getLog().error(e.getCause(),
+						"HadoopInstaller.Installation.HostFailed", //$NON-NLS-1$
 						host.getHostname());
 			}
 		}

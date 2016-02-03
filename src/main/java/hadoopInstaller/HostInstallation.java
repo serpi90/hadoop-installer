@@ -38,7 +38,7 @@ public class HostInstallation {
 		} finally {
 			try {
 				remoteDirectory.close();
-				this.installer.getLog().trace(
+				this.installer.getLog().debug(
 						"HostInstallation.SFTP.Disconnect", //$NON-NLS-1$
 						this.host.getHostname());
 			} catch (FileSystemException e) {
@@ -49,7 +49,7 @@ public class HostInstallation {
 			}
 			if (session.isConnected()) {
 				session.disconnect();
-				this.installer.getLog().trace(
+				this.installer.getLog().debug(
 						"HostInstallation.SSH.Disconnect", //$NON-NLS-1$
 						this.host.getHostname());
 			}

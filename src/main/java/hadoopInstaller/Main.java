@@ -53,7 +53,7 @@ public class Main {
 			}
 		} catch (FileSystemException e) {
 			new PrintStreamLog(HadoopInstaller.INSTALLER_NAME, System.err)
-					.fatal(e);
+					.fatal(e.getLocalizedMessage(), e);
 			System.exit(1);
 		}
 

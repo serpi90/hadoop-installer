@@ -152,7 +152,7 @@ public class HadoopInstaller {
 					"HadoopInstaller.Configure.CouldNotFindFile", //$NON-NLS-1$
 					CONFIGURATION_FILE, localDirectoryName);
 		} catch (InstallerConfigurationParseError e) {
-			throw new InstallationFatalError(e,
+			throw new InstallationFatalError(e.getCause(),
 					"HadoopInstaller.Configure.CouldNotReadFile", //$NON-NLS-1$
 					CONFIGURATION_FILE);
 		}

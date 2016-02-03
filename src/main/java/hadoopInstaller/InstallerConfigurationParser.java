@@ -3,15 +3,15 @@ package hadoopInstaller;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.commons.vfs2.FileObject;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-public class ConfigurationReader {
+public class InstallerConfigurationParser {
 	private static final String ATTRIBUTE_DELETE_BUNDLES = "deleteBundles"; //$NON-NLS-1$
 	private static final String ATTRIBUTE_DELETE_OLD_FILES = "deleteOldFiles"; //$NON-NLS-1$
+	private static final String ATTRIBUTE_DELETE_OLD_CONFIGURATION_FILES = "deleteOldConfiguration"; //$NON-NLS-1$
 	private static final String ATTTRIBUTE_STRICT_HOST_KEY_CHECKING = "strictHostKeyChecking"; //$NON-NLS-1$
 	private static final String DEFAULT_SSH_KEY_FILE = System
 			.getProperty("user.home") //$NON-NLS-1$
@@ -20,7 +20,6 @@ public class ConfigurationReader {
 			.getProperty("user.home") //$NON-NLS-1$
 			+ "/.ssh/known_hosts"; //$NON-NLS-1$
 	private static final int DEFAULT_SSH_PORT = 22;
-	private static final String DTD_FILENAME = "configuration.dtd"; //$NON-NLS-1$
 	private static final String ELEMENT_DEFAULTS = "defaults"; //$NON-NLS-1$
 	private static final String ELEMENT_DEPLOY = "deploy"; //$NON-NLS-1$
 	private static final String ELEMENT_FILES = "files"; //$NON-NLS-1$
@@ -37,9 +36,9 @@ public class ConfigurationReader {
 
 	private static final String ELEMENT_USERNAME = "username"; //$NON-NLS-1$
 
-	private static final String YES = "yes"; //$NON-NLS-1$
+	private static final String TRUE = "true"; //$NON-NLS-1$
 
-	private static InstallerConfiguration generateConfigurationFrom(
+	public static InstallerConfiguration generateConfigurationFrom(
 			Document document) {
 		InstallerConfiguration conf = new InstallerConfiguration();
 		getNodeConfiguration(document, conf,
@@ -70,9 +69,12 @@ public class ConfigurationReader {
 		Element deploy = (Element) document
 				.getElementsByTagName(ELEMENT_DEPLOY).item(0);
 		conf.setDeleteOldFiles(deploy.getAttribute(ATTRIBUTE_DELETE_OLD_FILES)
-				.equals(YES));
+				.equalsIgnoreCase(TRUE));
+		conf.setDeleteOldConfigurationFiles(deploy.getAttribute(
+				ATTRIBUTE_DELETE_OLD_CONFIGURATION_FILES)
+				.equalsIgnoreCase(TRUE));
 		conf.setDeleteBundles(deploy.getAttribute(ATTRIBUTE_DELETE_BUNDLES)
-				.equals(YES));
+				.equalsIgnoreCase(TRUE));
 
 	}
 
@@ -117,8 +119,8 @@ public class ConfigurationReader {
 				DEFAULT_SSH_KEY_FILE));
 		conf.setSshKnownHosts(getValueFromChild(ssh, ELEMENT_KNOWN_HOSTS,
 				DEFAULT_SSH_KNOWN_HOSTS));
-		conf.setStrictHostKeyChecking(ssh
-				.getAttribute(ATTTRIBUTE_STRICT_HOST_KEY_CHECKING));
+		conf.setStrictHostKeyChecking(ssh.getAttribute(
+				ATTTRIBUTE_STRICT_HOST_KEY_CHECKING).equalsIgnoreCase(TRUE));
 	}
 
 	private static String getValueFromChild(Element node, String tag) {
@@ -139,22 +141,5 @@ public class ConfigurationReader {
 		if (value == null)
 			return defaultValue;
 		return value.getTextContent();
-	}
-
-	/**
-	 * 
-	 * @param xmlDocument
-	 * @return the installer configuration object.
-	 * @throws ConfigurationReadError
-	 * 
-	 *             There is no null validation for the XML elements because the
-	 *             incoming document is supposed to have been validated against
-	 *             a DTD (DTD_FILENAME).
-	 *
-	 */
-	public static InstallerConfiguration readFrom(FileObject xmlDocument)
-			throws ConfigurationReadError {
-		Document document = XMLDocumentReader.parse(xmlDocument, DTD_FILENAME);
-		return generateConfigurationFrom(document);
 	}
 }

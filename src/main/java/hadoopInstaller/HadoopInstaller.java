@@ -2,6 +2,8 @@ package hadoopInstaller;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URI;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
@@ -23,11 +25,13 @@ public class HadoopInstaller {
 	static final String INSTALLER_NAME = Messages
 			.getString("HadoopInstaller.InstallerName"); //$NON-NLS-1$
 	static final String CONFIGURATION_FILE = "configuration.xml"; //$NON-NLS-1$
-	private static final String CONFIGURATION_FOLDER_TO_UPLOAD = "hadoop-etc"; //$NON-NLS-1$
-	static final String TGZ_BUNDLES_FOLDER = "dependencies"; //$NON-NLS-1$
-	static final String HADOOP_ENV_FILE = "hadoop-env.sh"; //$NON-NLS-1$
+	static final String CONFIGURATION_SCHEMA = "configuration.xsd"; //$NON-NLS-1$
+	static final String CONFIGURATION_FOLDER_TO_UPLOAD = "hadoop-etc"; //$NON-NLS-1$
+	static final String ENV_FILE_HADOOP = "hadoop-env.sh"; //$NON-NLS-1$
+	static final String ENV_FILE_YARN = "yarn-env.sh"; //$NON-NLS-1$
 	static final String HADOOP_DIRECTORY = "hadoop"; //$NON-NLS-1$ Matches configuration.dtd <hadoop> element name.
 	static final String JAVA_DIRECTORY = "java"; //$NON-NLS-1$ Matches configuration.dtd <java> element name.
+	static final String TGZ_BUNDLES_FOLDER = "dependencies"; //$NON-NLS-1$
 
 	private boolean deploy;
 	private MessageFormattingLog log;
@@ -59,9 +63,9 @@ public class HadoopInstaller {
 		 * SSH session.
 		 */
 		JSch.setConfig(
-				"StrictHostKeyChecking", this.configuration.getStrictHostKeyChecking()); //$NON-NLS-1$
+				"StrictHostKeyChecking", this.configuration.getStrictHostKeyChecking() ? "yes" : "no"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 		getLog().trace("HadoopInstaller.Configure.StrictHostKeyChecking", //$NON-NLS-1$
-				this.configuration.getStrictHostKeyChecking());
+				this.configuration.getStrictHostKeyChecking() ? "yes" : "no"); //$NON-NLS-1$//$NON-NLS-2$
 		this.ssh = new JSch();
 		try {
 			this.ssh.setKnownHosts(this.configuration.getSshKnownHosts());
@@ -79,7 +83,7 @@ public class HadoopInstaller {
 					getConfig().getSshKeyFile());
 		} catch (JSchException e) {
 			throw new InstallationFatalError(e,
-					"HadoopInstaller.Confiugre.SSH.Fail"); //$NON-NLS-1$
+					"HadoopInstaller.Configure.SSH.Fail"); //$NON-NLS-1$
 		}
 		getLog().debug("HadoopInstaller.Configure.SSH.Success"); //$NON-NLS-1$
 	}
@@ -98,8 +102,8 @@ public class HadoopInstaller {
 			 * In the case of ask, the UserInfo object should be passed with
 			 * builder.setUserInfo()
 			 */
-			builder.setStrictHostKeyChecking(options,
-					this.configuration.getStrictHostKeyChecking());
+			builder.setStrictHostKeyChecking(options, this.configuration
+					.getStrictHostKeyChecking() ? "yes" : "no"); //$NON-NLS-1$//$NON-NLS-2$
 			getLog().trace("HadoopInstaller.Configure.StrictHostKeyChecking", //$NON-NLS-1$
 					this.configuration.getStrictHostKeyChecking());
 			builder.setKnownHosts(options,
@@ -132,7 +136,11 @@ public class HadoopInstaller {
 			setLocalDirectory(VFS.getManager().resolveFile(localDirectoryName));
 			FileObject configurationFile = getLocalDirectory().resolveFile(
 					CONFIGURATION_FILE);
-			setConfig(ConfigurationReader.readFrom(configurationFile));
+
+			FileObject configurationSchema = getConfigurationSchema();
+			setConfig(InstallerConfigurationParser
+					.generateConfigurationFrom(XMLDocumentReader.parse(
+							configurationFile, configurationSchema)));
 			try {
 				configurationFile.close();
 			} catch (FileSystemException ex) {
@@ -143,12 +151,37 @@ public class HadoopInstaller {
 			throw new InstallationFatalError(e,
 					"HadoopInstaller.Configure.CouldNotFindFile", //$NON-NLS-1$
 					CONFIGURATION_FILE, localDirectoryName);
-		} catch (ConfigurationReadError e) {
+		} catch (InstallerConfigurationParseError e) {
 			throw new InstallationFatalError(e,
 					"HadoopInstaller.Configure.CouldNotReadFile", //$NON-NLS-1$
 					CONFIGURATION_FILE);
 		}
 		getLog().info("HadoopInstaller.Configure.Success"); //$NON-NLS-1$
+	}
+
+	private FileObject getConfigurationSchema() throws InstallationFatalError {
+		/*
+		 * As i can not find a way to load a resource directly using VFS, the
+		 * resource is written to a temporary VFS file and we return that file.
+		 */
+		try {
+			FileObject configurationSchema;
+			configurationSchema = VFS.getManager().resolveFile(
+					"ram:///" + CONFIGURATION_SCHEMA);//$NON-NLS-1$
+			try (OutputStream out = configurationSchema.getContent()
+					.getOutputStream();
+					InputStream in = this.getClass().getResourceAsStream(
+							CONFIGURATION_SCHEMA);) {
+				while (in.available() > 0) {
+					out.write(in.read());
+				}
+			}
+			return configurationSchema;
+		} catch (IOException e) {
+			throw new InstallationFatalError(e,
+					"HadoopInstaller.Configure.CouldNotReadFile", //$NON-NLS-1$
+					CONFIGURATION_SCHEMA);
+		}
 	}
 
 	public void run() throws InstallationFatalError {
@@ -171,24 +204,12 @@ public class HadoopInstaller {
 	}
 
 	private void generateConfigurationFiles() throws InstallationFatalError {
-		getLog().trace("HadoopInstaller.ConfigurationFilesToUpload.Loading", //$NON-NLS-1$
-				CONFIGURATION_FOLDER_TO_UPLOAD);
-		try {
-			this.configurationFilesToUpload = getLocalDirectory().resolveFile(
-					CONFIGURATION_FOLDER_TO_UPLOAD);
-			if (!this.configurationFilesToUpload.exists()) {
-				this.configurationFilesToUpload.createFolder();
-				getLog().warn(
-						"HadoopInstaller.ConfigurationFilesToUpload.FolderDoesntExist", //$NON-NLS-1$
-						CONFIGURATION_FOLDER_TO_UPLOAD);
-			}
-		} catch (FileSystemException e) {
-			throw new InstallationFatalError(
-					e,
-					"HadoopInstaller.ConfigurationFilesToUpload.FolderCouldNotOpen", //$NON-NLS-1$
-					CONFIGURATION_FOLDER_TO_UPLOAD);
-		}
-		getLog().debug("HadoopInstaller.ConfigurationFilesToUpload.Loaded"); //$NON-NLS-1$
+		this.getLog().trace("HadoopInstaller.ConfigurationFilesToUpload.Start"); //$NON-NLS-1$
+		// TODO! implement a new strategy that generates default files.
+		this.configurationFilesToUpload = new LoadFromFolder(
+				CONFIGURATION_FOLDER_TO_UPLOAD, this.getLocalDirectory(),
+				this.getLog()).generateConfigurationFiles();
+		this.getLog().debug("HadoopInstaller.ConfigurationFilesToUpload.End"); //$NON-NLS-1$
 	}
 
 	private void analyzeBundles() throws InstallationFatalError {
@@ -214,6 +235,11 @@ public class HadoopInstaller {
 						"HadoopInstaller.InstallationBundles.From", resource, //$NON-NLS-1$
 						fileName);
 				FileObject bundle = folder.resolveFile(fileName);
+				if (!bundle.exists()) {
+					throw new InstallationFatalError(
+							"HadoopInstaller.InstallationBundles.Missing", //$NON-NLS-1$
+							fileName, folder.getName().getBaseName());
+				}
 				if (doDeploy()) {
 					getBundleHashes(bundle);
 				}
@@ -316,6 +342,11 @@ public class HadoopInstaller {
 
 	public FileObject getConfigurationFilesToUpload() {
 		return this.configurationFilesToUpload;
+	}
+
+	public void getConfigurationFilesToUpload(
+			FileObject someConfigurationFilesToUpload) {
+		this.configurationFilesToUpload = someConfigurationFilesToUpload;
 	}
 
 	public JSch getSsh() {

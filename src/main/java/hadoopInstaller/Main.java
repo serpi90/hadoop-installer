@@ -1,12 +1,18 @@
 package hadoopInstaller;
 
+import java.io.PrintStream;
+import java.text.MessageFormat;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.commons.logging.impl.SimpleLog;
+import org.apache.commons.vfs2.FileSystemException;
+import org.apache.commons.vfs2.VFS;
 
 public class Main {
+
+	private static final Object FILE_LOG_NAME = "installation.log"; //$NON-NLS-1$
 
 	public static void main(String[] args) {
 		// Disable VFS logging to console by default
@@ -19,16 +25,38 @@ public class Main {
 				"org.apache.commons.logging.simplelog.showlogname", "false"); //$NON-NLS-1$//$NON-NLS-2$
 		System.setProperty(
 				"org.apache.commons.logging.simplelog.showShortLogname", "false"); //$NON-NLS-1$//$NON-NLS-2$
-		SimpleLog log = new SimpleLog(HadoopInstaller.INSTALLER_NAME);
-		log.setLevel(detectLogLevel(args));
-		boolean deploy = Arrays.asList(args).contains("-deploy"); //$NON-NLS-1$
-		try {
-			new HadoopInstaller(log, deploy).run();
-		} catch (InstallationFatalError e) {
-			log.fatal(e.getLocalizedMessage());
-			log.fatal(e.getCause().getLocalizedMessage());
-			log.trace(e.getLocalizedMessage(), e);
+		try (PrintStream filePrintStream = new PrintStream(
+				VFS.getManager()
+						.resolveFile(
+								MessageFormat.format(
+										"file://{0}/{1}", //$NON-NLS-1$
+										System.getProperty("user.dir"), Main.FILE_LOG_NAME)).getContent() //$NON-NLS-1$
+						.getOutputStream(true))) {
+
+			CompositeLog log = new CompositeLog();
+			Integer logLevel = detectLogLevel(args);
+			PrintStreamLog consoleLog = new PrintStreamLog(
+					HadoopInstaller.INSTALLER_NAME, System.out);
+			consoleLog.setLevel(logLevel);
+			log.addLog(consoleLog);
+			PrintStreamLog fileLog = new PrintStreamLog(
+					HadoopInstaller.INSTALLER_NAME, filePrintStream);
+			fileLog.setLevel(logLevel);
+			log.addLog(fileLog);
+			boolean deploy = Arrays.asList(args).contains("-deploy"); //$NON-NLS-1$
+			try {
+				new HadoopInstaller(log, deploy).run();
+			} catch (InstallationFatalError e) {
+				log.fatal(e.getLocalizedMessage());
+				log.fatal(e.getCause().getLocalizedMessage());
+				log.trace(e.getLocalizedMessage(), e);
+			}
+		} catch (FileSystemException e) {
+			new PrintStreamLog(HadoopInstaller.INSTALLER_NAME, System.err)
+					.fatal(e);
+			System.exit(1);
 		}
+
 		/*
 		 * MAYBE ssh-ask
 		 * 

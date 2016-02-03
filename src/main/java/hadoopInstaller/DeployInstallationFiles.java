@@ -1,7 +1,5 @@
 package hadoopInstaller;
 
-import hadoopInstaller.SshCommandExecutor.ExecutionError;
-
 import java.text.MessageFormat;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -86,11 +84,14 @@ public class DeployInstallationFiles {
 			String fileName = fileEntry.getValue();
 			String linkName = fileEntry.getKey();
 			String commandString = MessageFormat
-					.format("cd {0}; tar -zxf {1}; mv {2} {3}", this.host.getInstallationDirectory(), fileName, this.installer.getDirectories().get(linkName), linkName); //$NON-NLS-1$
+					.format("cd {0}; tar -zxf {1}; ln -sf {2} {3}", this.host.getInstallationDirectory(), fileName, this.installer.getDirectories().get(linkName), linkName); //$NON-NLS-1$
 			SshCommandExecutor command = new SshCommandExecutor(this.session);
 			try {
 				command.execute(commandString);
 			} catch (ExecutionError e) {
+				if (!command.getError().isEmpty()) {
+					this.installer.getLog().error(command.getError());
+				}
 				throw new InstallationError(e,
 						"DeployInstallationFiles.ErrorDecompressingFiles", //$NON-NLS-1$
 						this.host.getHostname());

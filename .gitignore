@@ -1,8 +1,14 @@
 /target/
 /configuration.xml
+<<<<<<< HEAD
+/dependencies/
+/hadoop-etc/
+installation.log
+=======
 /configuration.dtd
 /dependencies/*
 /hadoop-etc/*
 .classpath
 .project
 .settings
+>>>>>>> ea0f8b3fba7ed20f8b76aa660ef0520fdd33056d

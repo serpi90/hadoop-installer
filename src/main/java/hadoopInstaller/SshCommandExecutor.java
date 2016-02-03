@@ -5,7 +5,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.text.MessageFormat;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -14,19 +13,6 @@ import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 
 public class SshCommandExecutor {
-
-	public class ExecutionError extends Exception {
-		private static final long serialVersionUID = -3074472521049628090L;
-
-		public ExecutionError(String format, Object... arguments) {
-			super(MessageFormat.format(Messages.getString(format), arguments));
-		}
-
-		public ExecutionError(Throwable t, String format, Object... arguments) {
-			super(MessageFormat.format(Messages.getString(format), arguments),
-					t);
-		}
-	}
 
 	private OutputStream error;
 
@@ -107,8 +93,8 @@ public class SshCommandExecutor {
 		}
 	}
 
-	public OutputStream getError() {
-		return this.error;
+	public String getError() {
+		return this.error.toString();
 	}
 
 	public List<String> getOutput() {

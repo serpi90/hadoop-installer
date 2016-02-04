@@ -1,4 +1,14 @@
-package hadoopInstaller;
+package hadoopInstaller.installation;
+
+import hadoopInstaller.configurationGeneration.LoadFromFolder;
+import hadoopInstaller.exception.InstallationError;
+import hadoopInstaller.exception.InstallationFatalError;
+import hadoopInstaller.exception.InstallerConfigurationParseError;
+import hadoopInstaller.io.InstallerConfigurationParser;
+import hadoopInstaller.io.MD5Calculator;
+import hadoopInstaller.io.XMLDocumentReader;
+import hadoopInstaller.logging.MessageFormattingLog;
+import hadoopInstaller.util.Messages;
 
 import java.io.File;
 import java.io.IOException;
@@ -21,17 +31,9 @@ import org.apache.commons.vfs2.provider.sftp.SftpFileSystemConfigBuilder;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 
-public class HadoopInstaller {
-	static final String INSTALLER_NAME = Messages
+public class Installer {
+	public static final String INSTALLER_NAME = Messages
 			.getString("HadoopInstaller.InstallerName"); //$NON-NLS-1$
-	static final String CONFIGURATION_FILE = "configuration.xml"; //$NON-NLS-1$
-	static final String CONFIGURATION_SCHEMA = "configuration.xsd"; //$NON-NLS-1$
-	static final String CONFIGURATION_FOLDER_TO_UPLOAD = "hadoop-etc"; //$NON-NLS-1$
-	static final String ENV_FILE_HADOOP = "hadoop-env.sh"; //$NON-NLS-1$
-	static final String ENV_FILE_YARN = "yarn-env.sh"; //$NON-NLS-1$
-	static final String HADOOP_DIRECTORY = "hadoop"; //$NON-NLS-1$ Matches configuration.dtd <hadoop> element name.
-	static final String JAVA_DIRECTORY = "java"; //$NON-NLS-1$ Matches configuration.dtd <java> element name.
-	static final String TGZ_BUNDLES_FOLDER = "dependencies"; //$NON-NLS-1$
 
 	private boolean deploy;
 	private MessageFormattingLog log;
@@ -43,7 +45,7 @@ public class HadoopInstaller {
 	private JSch ssh;
 	private FileSystemOptions sftpOptions;
 
-	public HadoopInstaller(Log aLog, boolean doDeploy)
+	public Installer(Log aLog, boolean doDeploy)
 			throws InstallationFatalError {
 		this.fileHashes = new HashMap<>(2);
 		this.directories = new HashMap<>(2);
@@ -130,12 +132,12 @@ public class HadoopInstaller {
 
 	private void loadConfiguration() throws InstallationFatalError {
 		getLog().trace("HadoopInstaller.Configure.Start", //$NON-NLS-1$
-				CONFIGURATION_FILE);
+				InstallerConstants.CONFIGURATION_FILE);
 		String localDirectoryName = System.getProperty("user.dir"); //$NON-NLS-1$
 		try {
 			setLocalDirectory(VFS.getManager().resolveFile(localDirectoryName));
 			FileObject configurationFile = getLocalDirectory().resolveFile(
-					CONFIGURATION_FILE);
+					InstallerConstants.CONFIGURATION_FILE);
 
 			FileObject configurationSchema = getConfigurationSchema();
 			setConfig(InstallerConfigurationParser
@@ -145,16 +147,16 @@ public class HadoopInstaller {
 				configurationFile.close();
 			} catch (FileSystemException ex) {
 				getLog().warn(ex, "HadoopInstaller.File.CouldNotClose", //$NON-NLS-1$
-						CONFIGURATION_FILE);
+						InstallerConstants.CONFIGURATION_FILE);
 			}
 		} catch (FileSystemException e) {
 			throw new InstallationFatalError(e,
 					"HadoopInstaller.Configure.CouldNotFindFile", //$NON-NLS-1$
-					CONFIGURATION_FILE, localDirectoryName);
+					InstallerConstants.CONFIGURATION_FILE, localDirectoryName);
 		} catch (InstallerConfigurationParseError e) {
 			throw new InstallationFatalError(e.getCause(),
 					"HadoopInstaller.Configure.CouldNotReadFile", //$NON-NLS-1$
-					CONFIGURATION_FILE);
+					InstallerConstants.CONFIGURATION_FILE);
 		}
 		getLog().info("HadoopInstaller.Configure.Success"); //$NON-NLS-1$
 	}
@@ -167,11 +169,11 @@ public class HadoopInstaller {
 		try {
 			FileObject configurationSchema;
 			configurationSchema = VFS.getManager().resolveFile(
-					"ram:///" + CONFIGURATION_SCHEMA);//$NON-NLS-1$
+					"ram:///" + InstallerConstants.CONFIGURATION_SCHEMA);//$NON-NLS-1$
 			try (OutputStream out = configurationSchema.getContent()
 					.getOutputStream();
 					InputStream in = this.getClass().getResourceAsStream(
-							CONFIGURATION_SCHEMA);) {
+							InstallerConstants.CONFIGURATION_SCHEMA);) {
 				while (in.available() > 0) {
 					out.write(in.read());
 				}
@@ -180,7 +182,7 @@ public class HadoopInstaller {
 		} catch (IOException e) {
 			throw new InstallationFatalError(e,
 					"HadoopInstaller.Configure.CouldNotReadFile", //$NON-NLS-1$
-					CONFIGURATION_SCHEMA);
+					InstallerConstants.CONFIGURATION_SCHEMA);
 		}
 	}
 
@@ -207,8 +209,9 @@ public class HadoopInstaller {
 		this.getLog().trace("HadoopInstaller.ConfigurationFilesToUpload.Start"); //$NON-NLS-1$
 		// TODO! implement a new strategy that generates default files.
 		this.configurationFilesToUpload = new LoadFromFolder(
-				CONFIGURATION_FOLDER_TO_UPLOAD, this.getLocalDirectory(),
-				this.getLog()).generateConfigurationFiles();
+				InstallerConstants.CONFIGURATION_FOLDER_TO_UPLOAD,
+				this.getLocalDirectory(), this.getLog())
+				.generateConfigurationFiles();
 		this.getLog().debug("HadoopInstaller.ConfigurationFilesToUpload.End"); //$NON-NLS-1$
 	}
 
@@ -216,17 +219,19 @@ public class HadoopInstaller {
 		getLog().trace("HadoopInstaller.InstallationBundles.Start"); //$NON-NLS-1$
 		FileObject folder;
 		try {
-			folder = getLocalDirectory().resolveFile(TGZ_BUNDLES_FOLDER);
+			folder = getLocalDirectory().resolveFile(
+					InstallerConstants.TGZ_BUNDLES_FOLDER);
 			if (!folder.exists()) {
 				folder.createFolder();
 				getLog().warn(
 						"HadoopInstaller.InstallationBundles.FolderDoesntExist", //$NON-NLS-1$
-						TGZ_BUNDLES_FOLDER, CONFIGURATION_FILE);
+						InstallerConstants.TGZ_BUNDLES_FOLDER,
+						InstallerConstants.CONFIGURATION_FILE);
 			}
 		} catch (FileSystemException e) {
 			throw new InstallationFatalError(e,
 					"HadoopInstaller.InstallationBundles.FolderCouldNotOpen", //$NON-NLS-1$
-					TGZ_BUNDLES_FOLDER);
+					InstallerConstants.TGZ_BUNDLES_FOLDER);
 		}
 		for (String resource : getConfig().getFiles().keySet()) {
 			String fileName = getConfig().getFiles().get(resource);
@@ -262,7 +267,7 @@ public class HadoopInstaller {
 			folder.close();
 		} catch (FileSystemException e) {
 			getLog().warn(e, "HadoopInstaller.CouldNotClose", //$NON-NLS-1$
-					TGZ_BUNDLES_FOLDER);
+					InstallerConstants.TGZ_BUNDLES_FOLDER);
 		}
 	}
 

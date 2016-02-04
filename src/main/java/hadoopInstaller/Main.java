@@ -1,5 +1,10 @@
 package hadoopInstaller;
 
+import hadoopInstaller.exception.InstallationFatalError;
+import hadoopInstaller.installation.Installer;
+import hadoopInstaller.logging.CompositeLog;
+import hadoopInstaller.logging.PrintStreamLog;
+
 import java.io.PrintStream;
 import java.text.MessageFormat;
 import java.util.Arrays;
@@ -36,23 +41,23 @@ public class Main {
 			CompositeLog log = new CompositeLog();
 			Integer logLevel = detectLogLevel(args);
 			PrintStreamLog consoleLog = new PrintStreamLog(
-					HadoopInstaller.INSTALLER_NAME, System.out);
+					Installer.INSTALLER_NAME, System.out);
 			consoleLog.setLevel(logLevel);
 			log.addLog(consoleLog);
 			PrintStreamLog fileLog = new PrintStreamLog(
-					HadoopInstaller.INSTALLER_NAME, filePrintStream);
+					Installer.INSTALLER_NAME, filePrintStream);
 			fileLog.setLevel(logLevel);
 			log.addLog(fileLog);
 			boolean deploy = Arrays.asList(args).contains("-deploy"); //$NON-NLS-1$
 			try {
-				new HadoopInstaller(log, deploy).run();
+				new Installer(log, deploy).run();
 			} catch (InstallationFatalError e) {
 				log.fatal(e.getLocalizedMessage());
 				log.fatal(e.getCause().getLocalizedMessage());
 				log.trace(e.getLocalizedMessage(), e);
 			}
 		} catch (FileSystemException e) {
-			new PrintStreamLog(HadoopInstaller.INSTALLER_NAME, System.err)
+			new PrintStreamLog(Installer.INSTALLER_NAME, System.err)
 					.fatal(e.getLocalizedMessage(), e);
 			System.exit(1);
 		}

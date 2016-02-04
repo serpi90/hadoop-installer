@@ -1,4 +1,5 @@
-package hadoopInstaller;
+package hadoopInstaller.installation;
+
 
 import java.util.ArrayList;
 import java.util.HashMap;

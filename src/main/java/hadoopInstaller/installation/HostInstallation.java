@@ -1,4 +1,7 @@
-package hadoopInstaller;
+package hadoopInstaller.installation;
+
+import hadoopInstaller.configurationGeneration.EnvShBuilder;
+import hadoopInstaller.exception.InstallationError;
 
 import java.io.IOException;
 import java.net.URI;
@@ -17,9 +20,9 @@ import com.jcraft.jsch.Session;
 public class HostInstallation {
 
 	private Host host;
-	private HadoopInstaller installer;
+	private Installer installer;
 
-	public HostInstallation(Host aHost, HadoopInstaller anInstaller) {
+	public HostInstallation(Host aHost, Installer anInstaller) {
 		this.host = aHost;
 		this.installer = anInstaller;
 	}
@@ -67,7 +70,8 @@ public class HostInstallation {
 					.resolveFile("hadoop/etc/hadoop/"); //$NON-NLS-1$
 			if (this.installer.getConfig().deleteOldConfigurationFiles()) {
 				configurationDirectory.delete(new AllFileSelector());
-				this.installer.getLog().debug("HostInstallation.Upload.DeletingOldFiles", //$NON-NLS-1$
+				this.installer.getLog().debug(
+						"HostInstallation.Upload.DeletingOldFiles", //$NON-NLS-1$
 						this.host.getHostname());
 			} else if (!configurationDirectory.exists()) {
 				throw new InstallationError(
@@ -77,9 +81,9 @@ public class HostInstallation {
 					this.installer.getConfigurationFilesToUpload(),
 					new AllFileSelector());
 			modifyEnvShFile(configurationDirectory,
-					HadoopInstaller.ENV_FILE_HADOOP);
+					InstallerConstants.ENV_FILE_HADOOP);
 			modifyEnvShFile(configurationDirectory,
-					HadoopInstaller.ENV_FILE_YARN);
+					InstallerConstants.ENV_FILE_YARN);
 			try {
 				configurationDirectory.close();
 			} catch (FileSystemException ex) {
@@ -109,11 +113,11 @@ public class HostInstallation {
 		URI hadoop = URI.create(MessageFormat.format(
 				"file://{0}/{1}/", //$NON-NLS-1$
 				this.host.getInstallationDirectory(),
-				HadoopInstaller.HADOOP_DIRECTORY));
+				InstallerConstants.HADOOP_DIRECTORY));
 		URI java = URI.create(MessageFormat.format(
 				"file://{0}/{1}/", //$NON-NLS-1$
 				this.host.getInstallationDirectory(),
-				HadoopInstaller.JAVA_DIRECTORY));
+				InstallerConstants.JAVA_DIRECTORY));
 		builder.setCustomConfig(getLocalFileContents(fileName));
 		builder.setHadoopPrefix(hadoop.getPath());
 		builder.setJavaHome(java.getPath());

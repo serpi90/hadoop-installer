@@ -1,4 +1,6 @@
-package hadoopInstaller;
+package hadoopInstaller.exception;
+
+import hadoopInstaller.util.Messages;
 
 import java.text.MessageFormat;
 
@@ -10,7 +12,6 @@ public class ExecutionError extends Exception {
 	}
 
 	public ExecutionError(Throwable t, String format, Object... arguments) {
-		super(MessageFormat.format(Messages.getString(format), arguments),
-				t);
+		super(MessageFormat.format(Messages.getString(format), arguments), t);
 	}
 }

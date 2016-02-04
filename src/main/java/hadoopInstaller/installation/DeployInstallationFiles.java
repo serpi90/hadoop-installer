@@ -1,4 +1,8 @@
-package hadoopInstaller;
+package hadoopInstaller.installation;
+
+import hadoopInstaller.exception.ExecutionError;
+import hadoopInstaller.exception.InstallationError;
+import hadoopInstaller.logging.MessageFormattingLog;
 
 import java.text.MessageFormat;
 import java.util.Map;
@@ -15,13 +19,13 @@ import com.jcraft.jsch.Session;
 
 public class DeployInstallationFiles {
 
-	private HadoopInstaller installer;
+	private Installer installer;
 	private FileObject remoteDirectory;
 	private Session session;
 	private Host host;
 
 	public DeployInstallationFiles(Host aHost, Session aSession,
-			FileObject aRemoteDirectory, HadoopInstaller anInstaller) {
+			FileObject aRemoteDirectory, Installer anInstaller) {
 		this.host = aHost;
 		this.session = aSession;
 		this.remoteDirectory = aRemoteDirectory;
@@ -35,11 +39,11 @@ public class DeployInstallationFiles {
 				this.host.getHostname());
 		try {
 			dependenciesFolder = this.installer.getLocalDirectory()
-					.resolveFile(HadoopInstaller.TGZ_BUNDLES_FOLDER);
+					.resolveFile(InstallerConstants.TGZ_BUNDLES_FOLDER);
 		} catch (FileSystemException e) {
 			throw new InstallationError(e,
 					"DeployInstallationFiles.CouldNotOpenFile", //$NON-NLS-1$
-					HadoopInstaller.TGZ_BUNDLES_FOLDER);
+					InstallerConstants.TGZ_BUNDLES_FOLDER);
 		}
 		if (this.installer.getConfig().deleteOldFiles()) {
 			try {
@@ -288,8 +292,8 @@ public class DeployInstallationFiles {
 				this.log.debug(
 						"DeployInstallationFiles.FileNotInConfigurationFile", //$NON-NLS-1$
 						result.getFileName(),
-						HadoopInstaller.TGZ_BUNDLES_FOLDER,
-						HadoopInstaller.CONFIGURATION_FILE);
+						InstallerConstants.TGZ_BUNDLES_FOLDER,
+						InstallerConstants.CONFIGURATION_FILE);
 				break;
 			case MD5_DOES_NOT_MATCH:
 				this.log.debug(

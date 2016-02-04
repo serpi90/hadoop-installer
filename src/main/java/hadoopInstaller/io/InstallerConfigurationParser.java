@@ -1,4 +1,7 @@
-package hadoopInstaller;
+package hadoopInstaller.io;
+
+import hadoopInstaller.installation.Host;
+import hadoopInstaller.installation.InstallerConfiguration;
 
 import java.util.HashMap;
 import java.util.Map;

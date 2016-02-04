@@ -1,4 +1,4 @@
-package hadoopInstaller;
+package hadoopInstaller.installation;
 
 public class Host {
 
@@ -7,7 +7,8 @@ public class Host {
 	private Integer port;
 	private String username;
 
-	public Host(String instDir, String aUsername, String aHostname, Integer aPort) {
+	public Host(String instDir, String aUsername, String aHostname,
+			Integer aPort) {
 		this.installationDirectory = instDir;
 		this.username = aUsername;
 		this.hostname = aHostname;

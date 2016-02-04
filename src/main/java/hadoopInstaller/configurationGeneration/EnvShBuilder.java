@@ -1,4 +1,4 @@
-package hadoopInstaller;
+package hadoopInstaller.configurationGeneration;
 
 import java.io.IOException;
 import java.io.PrintWriter;

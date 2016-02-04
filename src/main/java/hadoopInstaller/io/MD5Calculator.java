@@ -1,4 +1,4 @@
-package hadoopInstaller;
+package hadoopInstaller.io;
 
 import java.io.IOException;
 import java.io.InputStream;

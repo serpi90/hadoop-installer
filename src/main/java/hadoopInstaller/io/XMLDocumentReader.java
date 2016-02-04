@@ -1,4 +1,6 @@
-package hadoopInstaller;
+package hadoopInstaller.io;
+
+import hadoopInstaller.exception.InstallerConfigurationParseError;
 
 import java.io.IOException;
 
@@ -12,7 +14,9 @@ import javax.xml.validation.SchemaFactory;
 
 import org.apache.commons.vfs2.FileObject;
 import org.w3c.dom.Document;
+import org.xml.sax.ErrorHandler;
 import org.xml.sax.SAXException;
+import org.xml.sax.SAXParseException;
 
 public class XMLDocumentReader {
 	public static Document parse(FileObject xmlDocument, FileObject xsdDocument)
@@ -32,7 +36,30 @@ public class XMLDocumentReader {
 			db.setErrorHandler(new ParseErrorHandler());
 			return db.parse(xmlDocument.getContent().getInputStream());
 		} catch (ParserConfigurationException | SAXException | IOException e) {
-			throw new InstallerConfigurationParseError(e, "XMLDocumentReader.ParseError", xmlDocument.getName()); //$NON-NLS-1$
+			throw new InstallerConfigurationParseError(e,
+					"XMLDocumentReader.ParseError", xmlDocument.getName()); //$NON-NLS-1$
+		}
+	}
+
+	private static class ParseErrorHandler implements ErrorHandler {
+
+		public ParseErrorHandler() {
+
+		}
+
+		@Override
+		public void error(SAXParseException e) throws SAXException {
+			throw e;
+		}
+
+		@Override
+		public void fatalError(SAXParseException e) throws SAXException {
+			throw e;
+		}
+
+		@Override
+		public void warning(SAXParseException e) throws SAXException {
+			throw e;
 		}
 	}
 }

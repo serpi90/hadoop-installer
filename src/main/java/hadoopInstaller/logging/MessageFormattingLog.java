@@ -1,4 +1,6 @@
-package hadoopInstaller;
+package hadoopInstaller.logging;
+
+import hadoopInstaller.util.Messages;
 
 import java.text.MessageFormat;
 

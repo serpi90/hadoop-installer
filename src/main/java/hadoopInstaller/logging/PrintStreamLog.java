@@ -1,4 +1,4 @@
-package hadoopInstaller;
+package hadoopInstaller.logging;
 
 import java.io.PrintStream;
 

@@ -1,4 +1,7 @@
-package hadoopInstaller;
+package hadoopInstaller.configurationGeneration;
+
+import hadoopInstaller.exception.InstallationFatalError;
+import hadoopInstaller.logging.MessageFormattingLog;
 
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;

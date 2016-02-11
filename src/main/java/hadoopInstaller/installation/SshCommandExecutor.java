@@ -16,11 +16,24 @@ import com.jcraft.jsch.Session;
 
 public class SshCommandExecutor {
 
+	private static void doWait() {
+		try {
+			Thread.sleep(250);
+		} catch (InterruptedException e) {
+			/*
+			 * Right now the application is single threaded, so there's nothing
+			 * to worry about interruptions. And 250 is a non negative number.
+			 */
+		}
+	}
+
 	private OutputStream error;
 
 	private List<String> output;
 
 	private Session session;
+
+	private int exitStatus;
 
 	/**
 	 * @param sshSession
@@ -43,17 +56,6 @@ public class SshCommandExecutor {
 			 * 
 			 * If any of them fails, we are probably getting out of memory, and
 			 * the problems are likely to show up elsewhere.
-			 */
-		}
-	}
-
-	private static void doWait() {
-		try {
-			Thread.sleep(250);
-		} catch (InterruptedException e) {
-			/*
-			 * Right now the application is single threaded, so there's nothing
-			 * to worry about interruptions. And 250 is a non negative number.
 			 */
 		}
 	}
@@ -88,6 +90,7 @@ public class SshCommandExecutor {
 				channel.disconnect();
 			}
 		}
+		this.exitStatus = channel.getExitStatus();
 		if (channel.getExitStatus() != 0) {
 			throw new ExecutionError(
 					"SshCommandExecutor.CommandReturnedStatus", command, //$NON-NLS-1$
@@ -97,6 +100,10 @@ public class SshCommandExecutor {
 
 	public String getError() {
 		return this.error.toString();
+	}
+
+	public int getExitStatus() {
+		return exitStatus;
 	}
 
 	public List<String> getOutput() {

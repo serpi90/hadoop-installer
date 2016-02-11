@@ -19,6 +19,27 @@ public class Main {
 
 	private static final Object FILE_LOG_NAME = "installation.log"; //$NON-NLS-1$
 
+	private static Integer detectLogLevel(String[] args) {
+		Map<String, Integer> levels = new HashMap<>(8);
+		levels.put("all", SimpleLog.LOG_LEVEL_ALL); //$NON-NLS-1$
+		levels.put("off", SimpleLog.LOG_LEVEL_OFF); //$NON-NLS-1$
+		levels.put("trace", SimpleLog.LOG_LEVEL_TRACE); //$NON-NLS-1$
+		levels.put("debug", SimpleLog.LOG_LEVEL_DEBUG); //$NON-NLS-1$
+		levels.put("info", SimpleLog.LOG_LEVEL_INFO); //$NON-NLS-1$
+		levels.put("warn", SimpleLog.LOG_LEVEL_WARN); //$NON-NLS-1$
+		levels.put("error", SimpleLog.LOG_LEVEL_ERROR); //$NON-NLS-1$
+		levels.put("fatal", SimpleLog.LOG_LEVEL_FATAL); //$NON-NLS-1$
+		for (String arg : args) {
+			if (arg.startsWith("-log:")) { //$NON-NLS-1$
+				String key = arg.substring(5);
+				if (levels.containsKey(key)) {
+					return levels.get(key);
+				}
+			}
+		}
+		return SimpleLog.LOG_LEVEL_INFO;
+	}
+
 	public static void main(String[] args) {
 		// Disable VFS logging to console by default
 		System.setProperty("org.apache.commons.logging.Log", //$NON-NLS-1$
@@ -57,37 +78,16 @@ public class Main {
 				log.trace(e.getLocalizedMessage(), e);
 			}
 		} catch (FileSystemException e) {
-			new PrintStreamLog(Installer.INSTALLER_NAME, System.err)
-					.fatal(e.getLocalizedMessage(), e);
+			new PrintStreamLog(Installer.INSTALLER_NAME, System.err).fatal(
+					e.getLocalizedMessage(), e);
 			System.exit(1);
 		}
 
 		/*
-		 * MAYBE ssh-ask
+		 * TODO-- ssh-ask
 		 * 
 		 * Consider using a configuration that doesn't require password-less
 		 * authentication, but set's it up for the final cluster.
 		 */
-	}
-
-	private static Integer detectLogLevel(String[] args) {
-		Map<String, Integer> levels = new HashMap<>(8);
-		levels.put("all", SimpleLog.LOG_LEVEL_ALL); //$NON-NLS-1$
-		levels.put("off", SimpleLog.LOG_LEVEL_OFF); //$NON-NLS-1$
-		levels.put("trace", SimpleLog.LOG_LEVEL_TRACE); //$NON-NLS-1$
-		levels.put("debug", SimpleLog.LOG_LEVEL_DEBUG); //$NON-NLS-1$
-		levels.put("info", SimpleLog.LOG_LEVEL_INFO); //$NON-NLS-1$
-		levels.put("warn", SimpleLog.LOG_LEVEL_WARN); //$NON-NLS-1$
-		levels.put("error", SimpleLog.LOG_LEVEL_ERROR); //$NON-NLS-1$
-		levels.put("fatal", SimpleLog.LOG_LEVEL_FATAL); //$NON-NLS-1$
-		for (String arg : args) {
-			if (arg.startsWith("-log:")) { //$NON-NLS-1$
-				String key = arg.substring(5);
-				if (levels.containsKey(key)) {
-					return levels.get(key);
-				}
-			}
-		}
-		return SimpleLog.LOG_LEVEL_INFO;
 	}
 }

@@ -19,28 +19,6 @@ import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
 
 public class XMLDocumentReader {
-	public static Document parse(FileObject xmlDocument, FileObject xsdDocument)
-			throws InstallerConfigurationParseError {
-
-		try {
-			// Validate against XML Schema
-			DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-			Schema schema = SchemaFactory.newInstance(
-					XMLConstants.W3C_XML_SCHEMA_NS_URI)
-					.newSchema(
-							new StreamSource(xsdDocument.getContent()
-									.getInputStream()));
-			dbf.setValidating(false);
-			dbf.setSchema(schema);
-			DocumentBuilder db = dbf.newDocumentBuilder();
-			db.setErrorHandler(new ParseErrorHandler());
-			return db.parse(xmlDocument.getContent().getInputStream());
-		} catch (ParserConfigurationException | SAXException | IOException e) {
-			throw new InstallerConfigurationParseError(e,
-					"XMLDocumentReader.ParseError", xmlDocument.getName()); //$NON-NLS-1$
-		}
-	}
-
 	private static class ParseErrorHandler implements ErrorHandler {
 
 		public ParseErrorHandler() {
@@ -60,6 +38,28 @@ public class XMLDocumentReader {
 		@Override
 		public void warning(SAXParseException e) throws SAXException {
 			throw e;
+		}
+	}
+
+	public static Document parse(FileObject xmlDocument, FileObject xsdDocument)
+			throws InstallerConfigurationParseError {
+
+		try {
+			// Validate against XML Schema
+			DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+			Schema schema = SchemaFactory.newInstance(
+					XMLConstants.W3C_XML_SCHEMA_NS_URI)
+					.newSchema(
+							new StreamSource(xsdDocument.getContent()
+									.getInputStream()));
+			dbf.setValidating(false);
+			dbf.setSchema(schema);
+			DocumentBuilder db = dbf.newDocumentBuilder();
+			db.setErrorHandler(new ParseErrorHandler());
+			return db.parse(xmlDocument.getContent().getInputStream());
+		} catch (ParserConfigurationException | SAXException | IOException e) {
+			throw new InstallerConfigurationParseError(e,
+					"XMLDocumentReader.ParseError", xmlDocument.getName()); //$NON-NLS-1$
 		}
 	}
 }

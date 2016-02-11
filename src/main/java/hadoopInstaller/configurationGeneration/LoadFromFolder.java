@@ -23,7 +23,7 @@ public class LoadFromFolder extends ConfigurationFileGenerationStrategy {
 	public FileObject generateConfigurationFiles()
 			throws InstallationFatalError {
 		FileObject folder;
-		this.log.trace(
+		this.log.debug(
 				"HadoopInstaller.LoadFromFolder.Loading", this.folderName);//$NON-NLS-1$
 		try {
 			folder = this.localDirectory.resolveFile(this.folderName);

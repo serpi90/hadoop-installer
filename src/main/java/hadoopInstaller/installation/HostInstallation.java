@@ -1,15 +1,11 @@
 package hadoopInstaller.installation;
 
-import hadoopInstaller.configurationGeneration.EnvShBuilder;
 import hadoopInstaller.exception.InstallationError;
+import hadoopInstaller.logging.MessageFormattingLog;
 
-import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.text.MessageFormat;
 
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.vfs2.AllFileSelector;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.VFS;
@@ -21,164 +17,62 @@ public class HostInstallation {
 
 	private Host host;
 	private Installer installer;
+	private MessageFormattingLog log;
 
 	public HostInstallation(Host aHost, Installer anInstaller) {
-		this.host = aHost;
-		this.installer = anInstaller;
+		host = aHost;
+		installer = anInstaller;
+		log = installer.getLog();
 	}
 
 	public void run() throws InstallationError {
-		this.installer.getLog().info("HostInstallation.Started", //$NON-NLS-1$
-				this.host.getHostname());
+		log.info("HostInstallation.Started", //$NON-NLS-1$
+				host.getHostname());
 		Session session = sshConnect();
+		// TODO- Detect if the hostname is correctly set in the target host, and
+		// promp to fix it. if needed
 		FileObject remoteDirectory = sftpConnect();
 		try {
-			if (this.installer.doDeploy()) {
-				new DeployInstallationFiles(this.host, session,
-						remoteDirectory, this.installer).run();
+			if (installer.doDeploy()) {
+				new DeployInstallationFiles(host, session, remoteDirectory,
+						installer).run();
 			}
-			uploadConfiguration(remoteDirectory);
+			new UploadConfiguration(installer.getConfigurationFilesToUpload(),
+					installer.getConfig().deleteOldConfigurationFiles(), log)
+					.run(host, remoteDirectory);
 		} finally {
 			try {
 				remoteDirectory.close();
-				this.installer.getLog().debug(
-						"HostInstallation.SFTP.Disconnect", //$NON-NLS-1$
-						this.host.getHostname());
+				log.debug("HostInstallation.SFTP.Disconnect", //$NON-NLS-1$
+						host.getHostname());
 			} catch (FileSystemException e) {
 				throw new InstallationError(e,
-						"HostInstallation.CouldNotClose", remoteDirectory //$NON-NLS-1$
-								.getName().getURI());
-
+						"HostInstallation.CouldNotClose", //$NON-NLS-1$
+						remoteDirectory.getName().getURI());
 			}
 			if (session.isConnected()) {
 				session.disconnect();
-				this.installer.getLog().debug(
-						"HostInstallation.SSH.Disconnect", //$NON-NLS-1$
-						this.host.getHostname());
+				log.debug("HostInstallation.SSH.Disconnect", //$NON-NLS-1$
+						host.getHostname());
 			}
 		}
-		this.installer.getLog().info("HostInstallation.Ended", //$NON-NLS-1$
-				this.host.getHostname());
-	}
-
-	private void uploadConfiguration(FileObject remoteDirectory)
-			throws InstallationError {
-		this.installer.getLog().trace("HostInstallation.Upload.Started", //$NON-NLS-1$
-				this.host.getHostname());
-		try {
-			FileObject configurationDirectory = remoteDirectory
-					.resolveFile("hadoop/etc/hadoop/"); //$NON-NLS-1$
-			if (this.installer.getConfig().deleteOldConfigurationFiles()) {
-				configurationDirectory.delete(new AllFileSelector());
-				this.installer.getLog().debug(
-						"HostInstallation.Upload.DeletingOldFiles", //$NON-NLS-1$
-						this.host.getHostname());
-			} else if (!configurationDirectory.exists()) {
-				throw new InstallationError(
-						"HostInstallation.Upload.NotDeployed"); //$NON-NLS-1$
-			}
-			configurationDirectory.copyFrom(
-					this.installer.getConfigurationFilesToUpload(),
-					new AllFileSelector());
-			modifyEnvShFile(configurationDirectory,
-					InstallerConstants.ENV_FILE_HADOOP);
-			modifyEnvShFile(configurationDirectory,
-					InstallerConstants.ENV_FILE_YARN);
-			try {
-				configurationDirectory.close();
-			} catch (FileSystemException ex) {
-				this.installer.getLog().warn("HostInstallation.CouldNotClose", //$NON-NLS-1$
-						configurationDirectory.getName().getURI());
-			}
-		} catch (FileSystemException e) {
-			throw new InstallationError(e, "HostInstallation.Upload.Error", //$NON-NLS-1$
-					remoteDirectory.getName().getURI());
-		}
-		this.installer.getLog().info("HostInstallation.Upload.Host", //$NON-NLS-1$
-				this.host.getHostname());
-	}
-
-	private void modifyEnvShFile(FileObject configurationDirectory,
-			String fileName) throws InstallationError {
-		this.installer.getLog().trace("HostInstallation.Upload.File.Start", //$NON-NLS-1$
-				fileName, this.host.getHostname());
-		FileObject configurationFile;
-		try {
-			configurationFile = configurationDirectory.resolveFile(fileName);
-		} catch (FileSystemException e) {
-			throw new InstallationError(e, "HostInstallation.CouldNotOpen", //$NON-NLS-1$
-					fileName);
-		}
-		EnvShBuilder builder = new EnvShBuilder(configurationFile);
-		URI hadoop = URI.create(MessageFormat.format(
-				"file://{0}/{1}/", //$NON-NLS-1$
-				this.host.getInstallationDirectory(),
-				InstallerConstants.HADOOP_DIRECTORY));
-		URI java = URI.create(MessageFormat.format(
-				"file://{0}/{1}/", //$NON-NLS-1$
-				this.host.getInstallationDirectory(),
-				InstallerConstants.JAVA_DIRECTORY));
-		builder.setCustomConfig(getLocalFileContents(fileName));
-		builder.setHadoopPrefix(hadoop.getPath());
-		builder.setJavaHome(java.getPath());
-		try {
-			builder.build();
-		} catch (IOException e) {
-			throw new InstallationError(e, "HostInstallation.CouldNotWrite", //$NON-NLS-1$
-					configurationFile.getName().getURI());
-		}
-		try {
-			configurationFile.close();
-		} catch (FileSystemException e) {
-			this.installer.getLog().warn("HostInstallation.CouldNotClose", //$NON-NLS-1$
-					configurationFile.getName().getURI());
-		}
-		this.installer.getLog().debug("HostInstallation.Upload.File.Success", //$NON-NLS-1$
-				fileName, this.host.getHostname());
-	}
-
-	private String getLocalFileContents(String fileName)
-			throws InstallationError {
-		this.installer.getLog().trace("HostInstallation.LoadingLocal", //$NON-NLS-1$
-				fileName);
-		FileObject localFile;
-		String localFileContents = new String();
-		try {
-			localFile = this.installer.getConfigurationFilesToUpload()
-					.resolveFile(fileName);
-			if (localFile.exists()) {
-				localFileContents = IOUtils.toString(localFile.getContent()
-						.getInputStream());
-			}
-		} catch (IOException e) {
-			throw new InstallationError(e, "HostInstallation.CouldNotOpen", //$NON-NLS-1$
-					fileName);
-		}
-		try {
-			localFile.close();
-		} catch (FileSystemException e) {
-			this.installer.getLog().warn("HostInstallation.CouldNotClose", //$NON-NLS-1$
-					localFile.getName().getURI());
-		}
-		this.installer.getLog().trace("HostInstallation.LoadedLocal", //$NON-NLS-1$
-				fileName);
-		return localFileContents;
+		log.info("HostInstallation.Ended", //$NON-NLS-1$
+				host.getHostname());
 	}
 
 	private FileObject sftpConnect() throws InstallationError {
 		FileObject remoteDirectory;
-		this.installer.getLog().trace("HostInstallation.SFTP.Connect.Start", //$NON-NLS-1$
-				this.host.getHostname(), this.host.getUsername());
+		log.debug("HostInstallation.SFTP.Connect.Start", //$NON-NLS-1$
+				host.getHostname(), host.getUsername());
 		try {
-			String uri = new URI("sftp", this.host.getUsername(), //$NON-NLS-1$
-					this.host.getHostname(), this.host.getPort(),
-					this.host.getInstallationDirectory(), null, null)
-					.toString();
+			String uri = new URI("sftp", host.getUsername(), //$NON-NLS-1$
+					host.getHostname(), host.getPort(),
+					host.getInstallationDirectory(), null, null).toString();
 			remoteDirectory = VFS.getManager().resolveFile(uri,
-					this.installer.getSftpOptions());
+					installer.getSftpOptions());
 		} catch (URISyntaxException | FileSystemException e) {
 			throw new InstallationError(e, "HostInstallation.SFTP.Connect.End", //$NON-NLS-1$
-					this.host.getHostname());
+					host.getHostname());
 		}
 		try {
 			if (!remoteDirectory.exists()) {
@@ -186,28 +80,33 @@ public class HostInstallation {
 			}
 		} catch (FileSystemException e) {
 			throw new InstallationError(e, "HostInstallation.CouldNotCreate", //$NON-NLS-1$
-					remoteDirectory.getName().getURI(), this.host.getUsername());
+					remoteDirectory.getName().getURI(), host.getUsername());
 		}
-		this.installer.getLog().debug("HostInstallation.SFTP.Connect.Success", //$NON-NLS-1$
-				this.host.getHostname(), this.host.getUsername());
+		log.debug("HostInstallation.SFTP.Connect.Success", //$NON-NLS-1$
+				host.getHostname(), host.getUsername());
 		return remoteDirectory;
 	}
 
 	private Session sshConnect() throws InstallationError {
 		Session session = null;
-		this.installer.getLog().trace("HostInstallation.SSH.Connect.Start", //$NON-NLS-1$
-				this.host.getHostname(), this.host.getUsername());
+		log.debug("HostInstallation.SSH.Connect.Start", //$NON-NLS-1$
+				host.getHostname(), host.getUsername());
 		try {
-			session = this.installer.getSsh().getSession(
-					this.host.getUsername(), this.host.getHostname(),
-					this.host.getPort());
+			session = installer.getSsh().getSession(host.getUsername(),
+					host.getHostname(), host.getPort());
 			session.connect();
 		} catch (JSchException e) {
+			/*
+			 * TODO If configuration say so, ask if a user should be created.
+			 * This should try to login as root, or sudo user, the configuration
+			 * username with a password indicated by the user, and configure ssh
+			 * keys.
+			 */
 			throw new InstallationError(e, "HostInstallation.SSH.Connect.Fail", //$NON-NLS-1$
-					this.host.getHostname(), this.host.getUsername());
+					host.getHostname(), host.getUsername());
 		}
-		this.installer.getLog().debug("HostInstallation.SSH.Connect.Success", //$NON-NLS-1$
-				this.host.getHostname(), this.host.getUsername());
+		log.debug("HostInstallation.SSH.Connect.Success", //$NON-NLS-1$
+				host.getHostname(), host.getUsername());
 		return session;
 	}
 }

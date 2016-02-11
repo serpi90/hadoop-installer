@@ -19,176 +19,6 @@ import com.jcraft.jsch.Session;
 
 public class DeployInstallationFiles {
 
-	private Installer installer;
-	private FileObject remoteDirectory;
-	private Session session;
-	private Host host;
-
-	public DeployInstallationFiles(Host aHost, Session aSession,
-			FileObject aRemoteDirectory, Installer anInstaller) {
-		this.host = aHost;
-		this.session = aSession;
-		this.remoteDirectory = aRemoteDirectory;
-		this.installer = anInstaller;
-	}
-
-	public void run() throws InstallationError {
-		FileObject dependenciesFolder;
-		this.installer.getLog().trace(
-				"DeployInstallationFiles.DeployingStarted", //$NON-NLS-1$
-				this.host.getHostname());
-		try {
-			dependenciesFolder = this.installer.getLocalDirectory()
-					.resolveFile(InstallerConstants.TGZ_BUNDLES_FOLDER);
-		} catch (FileSystemException e) {
-			throw new InstallationError(e,
-					"DeployInstallationFiles.CouldNotOpenFile", //$NON-NLS-1$
-					InstallerConstants.TGZ_BUNDLES_FOLDER);
-		}
-		if (this.installer.getConfig().deleteOldFiles()) {
-			try {
-				/*
-				 * Current version of commons-vfs can not delete symlinks to a
-				 * folder because it thinks of them as a folder and then fails
-				 * to delete them.
-				 * 
-				 * Workaround, connect and do rm -rf
-				 */
-				// this.remoteDirectory.delete(new AllFileSelector());
-				SshCommandExecutor command = new SshCommandExecutor(
-						this.session);
-				command.execute(MessageFormat.format("rm -rf {0}/*", //$NON-NLS-1$
-						this.remoteDirectory.getName().getPath()));
-			} catch (ExecutionError e) {
-				throw new InstallationError(e,
-						"DeployInstallationFiles.CouldNotDeleteOldFiles", //$NON-NLS-1$
-						this.remoteDirectory.getName().getURI());
-			}
-			this.installer.getLog().info(
-					"DeployInstallationFiles.DeletingOldFiles", //$NON-NLS-1$
-					this.remoteDirectory.getName().getURI());
-		}
-		uploadFiles(dependenciesFolder);
-		decompressFiles();
-		try {
-			dependenciesFolder.close();
-		} catch (FileSystemException e) {
-			this.installer.getLog().warn(
-					"DeployInstallationFiles.CouldNotCloseFile", //$NON-NLS-1$
-					dependenciesFolder.getName().getURI());
-		}
-		this.installer.getLog().debug(
-				"DeployInstallationFiles.DeployingFinished", //$NON-NLS-1$
-				this.host.getHostname());
-	}
-
-	private void decompressFiles() throws InstallationError {
-		for (Entry<String, String> fileEntry : this.installer.getConfig()
-				.getFiles().entrySet()) {
-			String fileName = fileEntry.getValue();
-			String linkName = fileEntry.getKey();
-			String commandString = MessageFormat
-					.format("cd {0}; tar -zxf {1}; ln -sf {2} {3}", this.host.getInstallationDirectory(), fileName, this.installer.getDirectories().get(linkName), linkName); //$NON-NLS-1$
-			SshCommandExecutor command = new SshCommandExecutor(this.session);
-			try {
-				command.execute(commandString);
-			} catch (ExecutionError e) {
-				if (!command.getError().isEmpty()) {
-					this.installer.getLog().error(command.getError());
-				}
-				throw new InstallationError(e,
-						"DeployInstallationFiles.ErrorDecompressingFiles", //$NON-NLS-1$
-						this.host.getHostname());
-			}
-			if (!command.getOutput().isEmpty()) {
-				for (String line : command.getOutput()) {
-					this.installer.getLog().trace(line);
-				}
-			}
-			if (this.installer.getConfig().deleteBundles())
-				try {
-					this.remoteDirectory.resolveFile(fileName).delete();
-					this.installer.getLog().info(
-							"DeployInstallationFiles.DeletingBundle", fileName, //$NON-NLS-1$
-							this.remoteDirectory.getName().getURI());
-				} catch (FileSystemException e) {
-					throw new InstallationError(e,
-							"DeployInstallationFiles.CouldNotDeleteBundle", //$NON-NLS-1$
-							fileName, this.remoteDirectory.getName().getURI());
-				}
-		}
-	}
-
-	private void uploadFiles(FileObject dependenciesFolder)
-			throws InstallationError {
-		/*
-		 * Copy the files if they do not exist or if the existing file hash does
-		 * not match with the one calculated previously.
-		 * 
-		 * The log is done with an observer on the file selector.
-		 */
-		MD5ComparingFileSelector selector = new MD5ComparingFileSelector(
-				this.host, this.session, this.installer.getFileHashes(),
-				this.remoteDirectory);
-		MD5ComparingSelectorLogger observer = new MD5ComparingSelectorLogger(
-				this.installer.getLog());
-		selector.addObserver(observer);
-		try {
-			this.remoteDirectory.copyFrom(dependenciesFolder, selector);
-		} catch (FileSystemException e) {
-			throw new InstallationError(e,
-					"DeployInstallationFiles.ErrorUploadingFiles", //$NON-NLS-1$
-					this.host.getHostname());
-		}
-		selector.deleteObserver(observer);
-	}
-
-	public class Result {
-		private String description;
-		private String fileName;
-		private boolean included;
-		private Reason reason;
-
-		public Result(boolean isIncluded, String aFileName, Reason aReason) {
-			this.included = isIncluded;
-			this.fileName = aFileName;
-			this.reason = aReason;
-			this.description = null;
-		}
-
-		public Result(boolean isIncluded, String aFileName, Reason aReason,
-				String aDescription) {
-			this.included = isIncluded;
-			this.fileName = aFileName;
-			this.reason = aReason;
-			this.description = aDescription;
-		}
-
-		public String getDescription() {
-			return this.description;
-		}
-
-		public String getFileName() {
-			return this.fileName;
-		}
-
-		public Reason getReason() {
-			return this.reason;
-		}
-
-		public boolean hasDescription() {
-			return getDescription() != null;
-		}
-
-		public boolean isIncluded() {
-			return this.included;
-		}
-	}
-
-	public enum Reason {
-		COULD_NOT_CALCULATE_MD5, FILE_NOT_IN_UPLOAD_LIST, MD5_DOES_NOT_MATCH, MD5_MATCHES, FILE_NOT_PRESENT, COULD_NOT_DETERMINE_FILE_EXISTANCE
-	}
-
 	public class MD5ComparingFileSelector extends Observable implements
 			FileSelector {
 		private Host o_host;
@@ -266,7 +96,6 @@ public class DeployInstallationFiles {
 			return fileInfo.getBaseFolder().equals(fileInfo.getFile());
 		}
 	}
-
 	public class MD5ComparingSelectorLogger implements Observer {
 
 		private MessageFormattingLog log;
@@ -325,5 +154,174 @@ public class DeployInstallationFiles {
 						result.getFileName());
 			}
 		}
+	}
+	public enum Reason {
+		COULD_NOT_CALCULATE_MD5, FILE_NOT_IN_UPLOAD_LIST, MD5_DOES_NOT_MATCH, MD5_MATCHES, FILE_NOT_PRESENT, COULD_NOT_DETERMINE_FILE_EXISTANCE
+	}
+	public class Result {
+		private String description;
+		private String fileName;
+		private boolean included;
+		private Reason reason;
+
+		public Result(boolean isIncluded, String aFileName, Reason aReason) {
+			this.included = isIncluded;
+			this.fileName = aFileName;
+			this.reason = aReason;
+			this.description = null;
+		}
+
+		public Result(boolean isIncluded, String aFileName, Reason aReason,
+				String aDescription) {
+			this.included = isIncluded;
+			this.fileName = aFileName;
+			this.reason = aReason;
+			this.description = aDescription;
+		}
+
+		public String getDescription() {
+			return this.description;
+		}
+
+		public String getFileName() {
+			return this.fileName;
+		}
+
+		public Reason getReason() {
+			return this.reason;
+		}
+
+		public boolean hasDescription() {
+			return getDescription() != null;
+		}
+
+		public boolean isIncluded() {
+			return this.included;
+		}
+	}
+	private Installer installer;
+
+	private FileObject remoteDirectory;
+
+	private Session session;
+
+	private Host host;
+
+	private MessageFormattingLog log;
+
+	public DeployInstallationFiles(Host aHost, Session aSession,
+			FileObject aRemoteDirectory, Installer anInstaller) {
+		this.host = aHost;
+		this.session = aSession;
+		this.remoteDirectory = aRemoteDirectory;
+		this.installer = anInstaller;
+		this.log = installer.getLog();
+	}
+
+	private void decompressFiles() throws InstallationError {
+		for (Entry<String, String> fileEntry : this.installer.getConfig()
+				.getFiles().entrySet()) {
+			String fileName = fileEntry.getValue();
+			String linkName = fileEntry.getKey();
+			String commandString = MessageFormat
+					.format("cd {0}; tar -zxf {1}; ln -sf {2} {3}", this.host.getInstallationDirectory(), fileName, this.installer.getDirectories().get(linkName), linkName); //$NON-NLS-1$
+			SshCommandExecutor command = new SshCommandExecutor(this.session);
+			try {
+				command.execute(commandString);
+			} catch (ExecutionError e) {
+				if (!command.getError().isEmpty()) {
+					log.error(command.getError());
+				}
+				throw new InstallationError(e,
+						"DeployInstallationFiles.ErrorDecompressingFiles", //$NON-NLS-1$
+						this.host.getHostname());
+			}
+			if (!command.getOutput().isEmpty()) {
+				for (String line : command.getOutput()) {
+					log.debug(line);
+				}
+			}
+			if (this.installer.getConfig().deleteBundles())
+				try {
+					this.remoteDirectory.resolveFile(fileName).delete();
+					log.info(
+							"DeployInstallationFiles.DeletingBundle", fileName, //$NON-NLS-1$
+							this.remoteDirectory.getName().getURI());
+				} catch (FileSystemException e) {
+					throw new InstallationError(e,
+							"DeployInstallationFiles.CouldNotDeleteBundle", //$NON-NLS-1$
+							fileName, this.remoteDirectory.getName().getURI());
+				}
+		}
+	}
+
+	public void run() throws InstallationError {
+		FileObject dependenciesFolder;
+		log.debug("DeployInstallationFiles.DeployingStarted", //$NON-NLS-1$
+				this.host.getHostname());
+		try {
+			dependenciesFolder = this.installer.getLocalDirectory()
+					.resolveFile(InstallerConstants.TGZ_BUNDLES_FOLDER);
+		} catch (FileSystemException e) {
+			throw new InstallationError(e,
+					"DeployInstallationFiles.CouldNotOpenFile", //$NON-NLS-1$
+					InstallerConstants.TGZ_BUNDLES_FOLDER);
+		}
+		if (this.installer.getConfig().deleteOldFiles()) {
+			try {
+				/*
+				 * Current version of commons-vfs can not delete symlinks to a
+				 * folder because it thinks of them as a folder and then fails
+				 * to delete them.
+				 * 
+				 * Workaround, connect and do rm -rf
+				 */
+				// this.remoteDirectory.delete(new AllFileSelector());
+				SshCommandExecutor command = new SshCommandExecutor(
+						this.session);
+				command.execute(MessageFormat.format("rm -rf {0}/*", //$NON-NLS-1$
+						this.remoteDirectory.getName().getPath()));
+			} catch (ExecutionError e) {
+				throw new InstallationError(e,
+						"DeployInstallationFiles.CouldNotDeleteOldFiles", //$NON-NLS-1$
+						this.remoteDirectory.getName().getURI());
+			}
+			log.info("DeployInstallationFiles.DeletingOldFiles", //$NON-NLS-1$
+					this.remoteDirectory.getName().getURI());
+		}
+		uploadFiles(dependenciesFolder);
+		decompressFiles();
+		try {
+			dependenciesFolder.close();
+		} catch (FileSystemException e) {
+			log.warn("DeployInstallationFiles.CouldNotCloseFile", //$NON-NLS-1$
+					dependenciesFolder.getName().getURI());
+		}
+		log.debug("DeployInstallationFiles.DeployingFinished", //$NON-NLS-1$
+				this.host.getHostname());
+	}
+
+	private void uploadFiles(FileObject dependenciesFolder)
+			throws InstallationError {
+		/*
+		 * Copy the files if they do not exist or if the existing file hash does
+		 * not match with the one calculated previously.
+		 * 
+		 * The log is done with an observer on the file selector.
+		 */
+		MD5ComparingFileSelector selector = new MD5ComparingFileSelector(
+				this.host, this.session, this.installer.getFileHashes(),
+				this.remoteDirectory);
+		MD5ComparingSelectorLogger observer = new MD5ComparingSelectorLogger(
+				log);
+		selector.addObserver(observer);
+		try {
+			this.remoteDirectory.copyFrom(dependenciesFolder, selector);
+		} catch (FileSystemException e) {
+			throw new InstallationError(e,
+					"DeployInstallationFiles.ErrorUploadingFiles", //$NON-NLS-1$
+					this.host.getHostname());
+		}
+		selector.deleteObserver(observer);
 	}
 }

@@ -1,6 +1,5 @@
 package hadoopInstaller.installation;
 
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -32,6 +31,10 @@ public class InstallerConfiguration {
 		return this.deleteBundles;
 	}
 
+	public boolean deleteOldConfigurationFiles() {
+		return this.deleteOldConfigurationFiles;
+	}
+
 	public boolean deleteOldFiles() {
 		return this.deleteOldFiles;
 	}
@@ -60,6 +63,10 @@ public class InstallerConfiguration {
 		this.deleteBundles = doDeleteBundles;
 	}
 
+	public void setDeleteOldConfigurationFiles(boolean b) {
+		this.deleteOldConfigurationFiles = b;
+	}
+
 	public void setDeleteOldFiles(boolean b) {
 		this.deleteOldFiles = b;
 	}
@@ -74,13 +81,5 @@ public class InstallerConfiguration {
 
 	public void setStrictHostKeyChecking(boolean b) {
 		this.strictHostKeyChecking = b;
-	}
-
-	public boolean deleteOldConfigurationFiles() {
-		return this.deleteOldConfigurationFiles;
-	}
-
-	public void setDeleteOldConfigurationFiles(boolean b) {
-		this.deleteOldConfigurationFiles = b;
 	}
 }

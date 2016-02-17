@@ -147,7 +147,7 @@ public class DeployInstallationFiles {
 				break;
 			}
 			if (result.isIncluded()) {
-				this.log.debug("DeployInstallationFiles.UploadingFile", //$NON-NLS-1$
+				this.log.debug("DeployInstallationFiles.WillUpload", //$NON-NLS-1$
 						result.getFileName());
 			} else {
 				this.log.debug("DeployInstallationFiles.SkippingFile", //$NON-NLS-1$
@@ -314,6 +314,8 @@ public class DeployInstallationFiles {
 				this.remoteDirectory);
 		MD5ComparingSelectorLogger observer = new MD5ComparingSelectorLogger(
 				log);
+		log.debug("DeployInstallationFiles.UploadingFiles", //$NON-NLS-1$
+				this.host.getHostname());
 		selector.addObserver(observer);
 		try {
 			this.remoteDirectory.copyFrom(dependenciesFolder, selector);

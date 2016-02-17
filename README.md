@@ -6,6 +6,8 @@ HadoopInstaller is a software to remotely deploy Apache Hadoop and it's configur
 
 ## Runtime
 
+In the current directory, place a file named `configuration.xml` using `examples/configuration.xml` as a template.
+
 Run with `java -jar HadoopInstaller.jar [-log:<level>] [-deploy]`
 
 * -deploy indicates that the software bundles should be uploaded and uncompressed. (else only the configuration files are uploaded)

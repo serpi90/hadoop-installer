@@ -341,15 +341,22 @@ public class Installer {
 		}
 		generateConfigurationFiles();
 		// TODO-- Run each host installation on a different thread.
-		// TODO- measure bandwidth between hosts into a graph and try to cut down
+		// TODO- measure bandwidth between hosts into a graph and try to cut
+		// down
 		// bottlenecks
 		for (Host host : getConfig().getNodes()) {
 			try {
 				new HostInstallation(host, this).run();
 			} catch (InstallationError e) {
-				getLog().error(e.getCause(),
-						"HadoopInstaller.Installation.HostFailed", //$NON-NLS-1$
-						host.getHostname());
+				if (e.getCause() != null) {
+					getLog().error(e.getCause(),
+							"HadoopInstaller.Installation.HostFailed", //$NON-NLS-1$
+							host.getHostname());
+				} else {
+					getLog().error(e,
+							"HadoopInstaller.Installation.HostFailed", //$NON-NLS-1$
+							host.getHostname());
+				}
 			}
 		}
 		getLog().info("HadoopInstaller.Installation.Success"); //$NON-NLS-1$

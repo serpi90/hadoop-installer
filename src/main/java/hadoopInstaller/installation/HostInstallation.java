@@ -1,7 +1,8 @@
 package hadoopInstaller.installation;
 
-import java.io.File;
-import java.io.IOException;
+import hadoopInstaller.exception.InstallationError;
+import hadoopInstaller.logging.MessageFormattingLog;
+
 import java.net.URI;
 import java.net.URISyntaxException;
 
@@ -9,10 +10,8 @@ import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.VFS;
 
-import ch.ethz.ssh2.Connection;
-import ch.ethz.ssh2.Session;
-import hadoopInstaller.exception.InstallationError;
-import hadoopInstaller.logging.MessageFormattingLog;
+import com.jcraft.jsch.JSchException;
+import com.jcraft.jsch.Session;
 
 public class HostInstallation {
 
@@ -30,28 +29,32 @@ public class HostInstallation {
 		log.info("HostInstallation.Started", //$NON-NLS-1$
 				host.getHostname());
 		Session session = sshConnect();
-
 		// TODO- Detect if the hostname is correctly set in the target host, and
 		// promp to fix it. if needed
 		FileObject remoteDirectory = sftpConnect();
 		try {
 			if (installer.doDeploy()) {
-				new DeployInstallationFiles(host, session, remoteDirectory, installer).run();
+				new DeployInstallationFiles(host, session, remoteDirectory,
+						installer).run();
 			}
 			new UploadConfiguration(installer.getConfigurationFilesToUpload(),
-					installer.getConfig().deleteOldConfigurationFiles(), log).run(host, remoteDirectory);
+					installer.getConfig().deleteOldConfigurationFiles(), log)
+					.run(host, remoteDirectory);
 		} finally {
 			try {
 				remoteDirectory.close();
 				log.debug("HostInstallation.SFTP.Disconnect", //$NON-NLS-1$
 						host.getHostname());
 			} catch (FileSystemException e) {
-				throw new InstallationError(e, "HostInstallation.CouldNotClose", //$NON-NLS-1$
+				throw new InstallationError(e,
+						"HostInstallation.CouldNotClose", //$NON-NLS-1$
 						remoteDirectory.getName().getURI());
 			}
-			session.close();
-			log.debug("HostInstallation.SSH.Disconnect", //$NON-NLS-1$
-					host.getHostname());
+			if (session.isConnected()) {
+				session.disconnect();
+				log.debug("HostInstallation.SSH.Disconnect", //$NON-NLS-1$
+						host.getHostname());
+			}
 		}
 		log.info("HostInstallation.Ended", //$NON-NLS-1$
 				host.getHostname());
@@ -63,8 +66,10 @@ public class HostInstallation {
 				host.getHostname(), host.getUsername());
 		try {
 			String uri = new URI("sftp", host.getUsername(), //$NON-NLS-1$
-					host.getHostname(), host.getPort(), host.getInstallationDirectory(), null, null).toString();
-			remoteDirectory = VFS.getManager().resolveFile(uri, installer.getSftpOptions());
+					host.getHostname(), host.getPort(),
+					host.getInstallationDirectory(), null, null).toString();
+			remoteDirectory = VFS.getManager().resolveFile(uri,
+					installer.getSftpOptions());
 		} catch (URISyntaxException | FileSystemException e) {
 			throw new InstallationError(e, "HostInstallation.SFTP.Connect.End", //$NON-NLS-1$
 					host.getHostname());
@@ -86,31 +91,20 @@ public class HostInstallation {
 		Session session = null;
 		log.debug("HostInstallation.SSH.Connect.Start", //$NON-NLS-1$
 				host.getHostname(), host.getUsername());
-		Connection conn = new Connection(host.getHostname(), host.getPort());
-		File privateKey = new File(installer.getConfig().getSshKeyFile());
-		boolean authenticated;
 		try {
-			conn.connect();
-			// TODO- ssh-ask, use the passphrase obtained at beginning.
-			authenticated = conn.authenticateWithPublicKey(host.getUsername(), privateKey, "");
-		} catch (IOException e) {
+			session = installer.getSsh().getSession(host.getUsername(),
+					host.getHostname(), host.getPort());
+			session.connect();
+		} catch (JSchException e) {
+			/*
+			 * TODO If configuration say so, ask if a user should be created.
+			 * This should try to login as root, or sudo user, the configuration
+			 * username with a password indicated by the user, and configure ssh
+			 * keys.
+			 */
 			throw new InstallationError(e, "HostInstallation.SSH.Connect.Fail", //$NON-NLS-1$
 					host.getHostname(), host.getUsername());
 		}
-		if (!authenticated) {
-			throw new InstallationError("HostInstallation.SSH.Connect.Fail", //$NON-NLS-1$
-					host.getHostname(), host.getUsername());
-		}
-		try {
-			session = conn.openSession();
-		} catch (IOException e) {
-			throw new InstallationError(e, "Could not open session");
-		}
-		/*
-		 * TODO If configuration say so, ask if a user should be created. This
-		 * should try to login as root, or sudo user, the configuration username
-		 * with a password indicated by the user, and configure ssh keys.
-		 */
 		log.debug("HostInstallation.SSH.Connect.Success", //$NON-NLS-1$
 				host.getHostname(), host.getUsername());
 		return session;

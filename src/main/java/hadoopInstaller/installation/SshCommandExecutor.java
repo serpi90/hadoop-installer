@@ -1,5 +1,7 @@
 package hadoopInstaller.installation;
 
+import hadoopInstaller.exception.ExecutionError;
+
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -8,10 +10,9 @@ import java.io.OutputStream;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.apache.commons.io.IOUtils;
-
-import ch.ethz.ssh2.Session;
-import hadoopInstaller.exception.ExecutionError;
+import com.jcraft.jsch.ChannelExec;
+import com.jcraft.jsch.JSchException;
+import com.jcraft.jsch.Session;
 
 public class SshCommandExecutor {
 
@@ -67,25 +68,33 @@ public class SshCommandExecutor {
 	 */
 	public void execute(String command) throws ExecutionError {
 		clearBuffers();
+		ChannelExec channel = openExecChannel();
+		channel.setInputStream(null);
+		channel.setCommand(command);
+		channel.setErrStream(this.error);
 		try {
-			session.execCommand(command);
-			BufferedReader consoleReader = new BufferedReader(new InputStreamReader(session.getStdout()));
-			String line;
-			do {
+			channel.connect();
+			BufferedReader consoleReader = new BufferedReader(
+					new InputStreamReader(channel.getInputStream()));
+			while (!channel.isClosed() || consoleReader.ready()) {
 				if (!consoleReader.ready()) {
 					doWait();
 				}
-				line = consoleReader.readLine();
-				output(line);
-			} while (line == null);
-			IOUtils.copy(session.getStderr(), this.error);
-		} catch (IOException e) {
-			throw new ExecutionError(e, "SshCommandExecutor.ErrorWhileExecuting", command); //$NON-NLS-1$
+				output(consoleReader.readLine());
+			}
+		} catch (JSchException | IOException e) {
+			throw new ExecutionError(e,
+					"SshCommandExecutor.ErrorWhileExecuting", command); //$NON-NLS-1$
+		} finally {
+			if (channel.isConnected()) {
+				channel.disconnect();
+			}
 		}
-		this.exitStatus = session.getExitStatus();
-		if (this.exitStatus != 0) {
-			throw new ExecutionError("SshCommandExecutor.CommandReturnedStatus", command, //$NON-NLS-1$
-					this.exitStatus);
+		this.exitStatus = channel.getExitStatus();
+		if (channel.getExitStatus() != 0) {
+			throw new ExecutionError(
+					"SshCommandExecutor.CommandReturnedStatus", command, //$NON-NLS-1$
+					channel.getExitStatus());
 		}
 	}
 
@@ -99,6 +108,17 @@ public class SshCommandExecutor {
 
 	public List<String> getOutput() {
 		return this.output;
+	}
+
+	private ChannelExec openExecChannel() throws ExecutionError {
+		ChannelExec channel;
+		try {
+			channel = (ChannelExec) this.session.openChannel("exec"); //$NON-NLS-1$
+		} catch (JSchException e) {
+			throw new ExecutionError(e, "SshCommandExecutor.ErrorConnectingTo", //$NON-NLS-1$
+					this.session.getHost());
+		}
+		return channel;
 	}
 
 	private void output(String line) {

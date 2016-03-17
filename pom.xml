@@ -75,13 +75,8 @@
 			<artifactId>commons-vfs2</artifactId>
 		</dependency>
 		<dependency>
-			<!-- Needed to support sftp in VFS, i wonder how do they solve the problems with ssh2 -->
 			<groupId>com.jcraft</groupId>
 			<artifactId>jsch</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>ch.ethz.ganymed</groupId>
-			<artifactId>ganymed-ssh2</artifactId>
 		</dependency>
 	</dependencies>
 	<dependencyManagement>
@@ -105,11 +100,6 @@
 				<groupId>com.jcraft</groupId>
 				<artifactId>jsch</artifactId>
 				<version>0.1.53</version>
-			</dependency>
-			<dependency>
-				<groupId>ch.ethz.ganymed</groupId>
-				<artifactId>ganymed-ssh2</artifactId>
-				<version>262</version>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>

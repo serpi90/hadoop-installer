@@ -45,15 +45,14 @@ import com.jcraft.jsch.Session;
 
 public class DeployInstallationFiles {
 
-	public class MD5ComparingFileSelector extends Observable implements
-			FileSelector {
+	public class MD5ComparingFileSelector extends Observable implements FileSelector {
 		private Host o_host;
 		private Session o_session;
 		private Map<String, String> filesMD5;
 		private FileObject o_remoteDirectory;
 
-		public MD5ComparingFileSelector(Host aHost, Session aSession,
-				Map<String, String> aFilesMD5Map, FileObject aRemoteDirectory) {
+		public MD5ComparingFileSelector(Host aHost, Session aSession, Map<String, String> aFilesMD5Map,
+				FileObject aRemoteDirectory) {
 			this.o_session = aSession;
 			this.o_host = aHost;
 			this.filesMD5 = aFilesMD5Map;
@@ -77,31 +76,25 @@ public class DeployInstallationFiles {
 			 * loaded into the Map
 			 */
 			if (!this.filesMD5.containsKey(fileName)) {
-				notifyObservers(new Result(false, fileName,
-						Reason.FILE_NOT_IN_UPLOAD_LIST));
+				notifyObservers(new Result(false, fileName, Reason.FILE_NOT_IN_UPLOAD_LIST));
 				return false;
 			}
-			SshCommandExecutor md5Command = new SshCommandExecutor(
-					this.o_session);
+			SshCommandExecutor md5Command = new SshCommandExecutor(this.o_session);
 			try {
 				if (!this.o_remoteDirectory.resolveFile(fileName).exists()) {
-					notifyObservers(new Result(true, fileName,
-							Reason.FILE_NOT_PRESENT));
+					notifyObservers(new Result(true, fileName, Reason.FILE_NOT_PRESENT));
 					return true;
 				}
 			} catch (FileSystemException e) {
-				notifyObservers(new Result(true, fileName,
-						Reason.COULD_NOT_DETERMINE_FILE_EXISTANCE));
+				notifyObservers(new Result(true, fileName, Reason.COULD_NOT_DETERMINE_FILE_EXISTANCE));
 				return true;
 			}
 			try {
-				md5Command.execute(MessageFormat.format(
-						"cd {0}; md5sum --binary {1} | grep -o ''^[0-9a-f]*''", //$NON-NLS-1$
+				md5Command.execute(MessageFormat.format("cd {0}; md5sum --binary {1} | grep -o ''^[0-9a-f]*''", //$NON-NLS-1$
 						this.o_host.getInstallationDirectory(), fileName));
 			} catch (ExecutionError e) {
-				notifyObservers(new Result(true, fileName,
-						Reason.COULD_NOT_CALCULATE_MD5, md5Command.getError()
-								.toString()));
+				notifyObservers(
+						new Result(true, fileName, Reason.COULD_NOT_CALCULATE_MD5, md5Command.getError().toString()));
 				return true;
 			}
 			String md5 = md5Command.getOutput().get(0);
@@ -109,25 +102,23 @@ public class DeployInstallationFiles {
 			if (md5Matches) {
 				notifyObservers(new Result(false, fileName, Reason.MD5_MATCHES));
 			} else {
-				notifyObservers(new Result(true, fileName,
-						Reason.MD5_DOES_NOT_MATCH));
+				notifyObservers(new Result(true, fileName, Reason.MD5_DOES_NOT_MATCH));
 			}
 			return !md5Matches;
 		}
 
 		@Override
-		public boolean traverseDescendents(FileSelectInfo fileInfo)
-				throws Exception {
+		public boolean traverseDescendents(FileSelectInfo fileInfo) throws Exception {
 			// Only copy the base folder contents, not it's sub-directories.
 			return fileInfo.getBaseFolder().equals(fileInfo.getFile());
 		}
 	}
+
 	public class MD5ComparingSelectorLogger implements Observer {
 
 		private MessageFormattingLog log;
 
-		public MD5ComparingSelectorLogger(
-				MessageFormattingLog messageFormattingLog) {
+		public MD5ComparingSelectorLogger(MessageFormattingLog messageFormattingLog) {
 			this.log = messageFormattingLog;
 		}
 
@@ -136,35 +127,29 @@ public class DeployInstallationFiles {
 			Result result = (Result) anObject;
 			switch (result.getReason()) {
 			case COULD_NOT_CALCULATE_MD5:
-				this.log.debug(
-						"DeployInstallationFiles.MD5CouldNotBeCalculated", //$NON-NLS-1$
+				this.log.debug("DeployInstallationFiles.MD5CouldNotBeCalculated", //$NON-NLS-1$
 						result.getFileName());
 				if (result.hasDescription()) {
 					this.log.debug(result.getDescription().trim());
 				}
 				break;
 			case FILE_NOT_IN_UPLOAD_LIST:
-				this.log.debug(
-						"DeployInstallationFiles.FileNotInConfigurationFile", //$NON-NLS-1$
-						result.getFileName(),
-						InstallerConstants.TGZ_BUNDLES_FOLDER,
+				this.log.debug("DeployInstallationFiles.FileNotInConfigurationFile", //$NON-NLS-1$
+						result.getFileName(), InstallerConstants.TGZ_BUNDLES_FOLDER,
 						InstallerConstants.CONFIGURATION_FILE);
 				break;
 			case MD5_DOES_NOT_MATCH:
-				this.log.debug(
-						"DeployInstallationFiles.MD5DoesNotMatch", result.getFileName()); //$NON-NLS-1$
+				this.log.debug("DeployInstallationFiles.MD5DoesNotMatch", result.getFileName()); //$NON-NLS-1$
 				break;
 			case MD5_MATCHES:
 				this.log.debug("DeployInstallationFiles.MD5Matches", //$NON-NLS-1$
 						result.getFileName());
 				break;
 			case FILE_NOT_PRESENT:
-				this.log.debug(
-						"DeployInstallationFiles.FileNotPresent", result.getFileName()); //$NON-NLS-1$
+				this.log.debug("DeployInstallationFiles.FileNotPresent", result.getFileName()); //$NON-NLS-1$
 				break;
 			case COULD_NOT_DETERMINE_FILE_EXISTANCE:
-				this.log.debug(
-						"DeployInstallationFiles.CouldNotDetermineFileExistance", //$NON-NLS-1$
+				this.log.debug("DeployInstallationFiles.CouldNotDetermineFileExistance", //$NON-NLS-1$
 						result.getFileName());
 				break;
 			default:
@@ -181,9 +166,11 @@ public class DeployInstallationFiles {
 			}
 		}
 	}
+
 	public enum Reason {
 		COULD_NOT_CALCULATE_MD5, FILE_NOT_IN_UPLOAD_LIST, MD5_DOES_NOT_MATCH, MD5_MATCHES, FILE_NOT_PRESENT, COULD_NOT_DETERMINE_FILE_EXISTANCE
 	}
+
 	public class Result {
 		private String description;
 		private String fileName;
@@ -197,8 +184,7 @@ public class DeployInstallationFiles {
 			this.description = null;
 		}
 
-		public Result(boolean isIncluded, String aFileName, Reason aReason,
-				String aDescription) {
+		public Result(boolean isIncluded, String aFileName, Reason aReason, String aDescription) {
 			this.included = isIncluded;
 			this.fileName = aFileName;
 			this.reason = aReason;
@@ -225,6 +211,7 @@ public class DeployInstallationFiles {
 			return this.included;
 		}
 	}
+
 	private Installer installer;
 
 	private FileObject remoteDirectory;
@@ -235,8 +222,7 @@ public class DeployInstallationFiles {
 
 	private MessageFormattingLog log;
 
-	public DeployInstallationFiles(Host aHost, Session aSession,
-			FileObject aRemoteDirectory, Installer anInstaller) {
+	public DeployInstallationFiles(Host aHost, Session aSession, FileObject aRemoteDirectory, Installer anInstaller) {
 		this.host = aHost;
 		this.session = aSession;
 		this.remoteDirectory = aRemoteDirectory;
@@ -245,12 +231,12 @@ public class DeployInstallationFiles {
 	}
 
 	private void decompressFiles() throws InstallationError {
-		for (Entry<String, String> fileEntry : this.installer.getConfig()
-				.getFiles().entrySet()) {
+		for (Entry<String, String> fileEntry : this.installer.getConfig().getFiles().entrySet()) {
 			String fileName = fileEntry.getValue();
 			String linkName = fileEntry.getKey();
-			String commandString = MessageFormat
-					.format("cd {0}; tar -zxf {1}; ln -sf {2} {3}", this.host.getInstallationDirectory(), fileName, this.installer.getDirectories().get(linkName), linkName); //$NON-NLS-1$
+			String commandString = MessageFormat.format("cd {0}; tar -zxf {1}; ln -sf {2} {3}", //$NON-NLS-1$
+					this.host.getInstallationDirectory(), fileName, this.installer.getDirectories().get(linkName),
+					linkName);
 			SshCommandExecutor command = new SshCommandExecutor(this.session);
 			try {
 				command.execute(commandString);
@@ -258,8 +244,7 @@ public class DeployInstallationFiles {
 				if (!command.getError().isEmpty()) {
 					log.error(command.getError());
 				}
-				throw new InstallationError(e,
-						"DeployInstallationFiles.ErrorDecompressingFiles", //$NON-NLS-1$
+				throw new InstallationError(e, "DeployInstallationFiles.ErrorDecompressingFiles", //$NON-NLS-1$
 						this.host.getHostname());
 			}
 			if (!command.getOutput().isEmpty()) {
@@ -270,12 +255,10 @@ public class DeployInstallationFiles {
 			if (this.installer.getConfig().deleteBundles())
 				try {
 					this.remoteDirectory.resolveFile(fileName).delete();
-					log.info(
-							"DeployInstallationFiles.DeletingBundle", fileName, //$NON-NLS-1$
+					log.info("DeployInstallationFiles.DeletingBundle", fileName, //$NON-NLS-1$
 							this.remoteDirectory.getName().getURI());
 				} catch (FileSystemException e) {
-					throw new InstallationError(e,
-							"DeployInstallationFiles.CouldNotDeleteBundle", //$NON-NLS-1$
+					throw new InstallationError(e, "DeployInstallationFiles.CouldNotDeleteBundle", //$NON-NLS-1$
 							fileName, this.remoteDirectory.getName().getURI());
 				}
 		}
@@ -286,11 +269,9 @@ public class DeployInstallationFiles {
 		log.debug("DeployInstallationFiles.DeployingStarted", //$NON-NLS-1$
 				this.host.getHostname());
 		try {
-			dependenciesFolder = this.installer.getLocalDirectory()
-					.resolveFile(InstallerConstants.TGZ_BUNDLES_FOLDER);
+			dependenciesFolder = this.installer.getLocalDirectory().resolveFile(InstallerConstants.TGZ_BUNDLES_FOLDER);
 		} catch (FileSystemException e) {
-			throw new InstallationError(e,
-					"DeployInstallationFiles.CouldNotOpenFile", //$NON-NLS-1$
+			throw new InstallationError(e, "DeployInstallationFiles.CouldNotOpenFile", //$NON-NLS-1$
 					InstallerConstants.TGZ_BUNDLES_FOLDER);
 		}
 		if (this.installer.getConfig().deleteOldFiles()) {
@@ -303,13 +284,11 @@ public class DeployInstallationFiles {
 				 * Workaround, connect and do rm -rf
 				 */
 				// this.remoteDirectory.delete(new AllFileSelector());
-				SshCommandExecutor command = new SshCommandExecutor(
-						this.session);
+				SshCommandExecutor command = new SshCommandExecutor(this.session);
 				command.execute(MessageFormat.format("rm -rf {0}/*", //$NON-NLS-1$
 						this.remoteDirectory.getName().getPath()));
 			} catch (ExecutionError e) {
-				throw new InstallationError(e,
-						"DeployInstallationFiles.CouldNotDeleteOldFiles", //$NON-NLS-1$
+				throw new InstallationError(e, "DeployInstallationFiles.CouldNotDeleteOldFiles", //$NON-NLS-1$
 						this.remoteDirectory.getName().getURI());
 			}
 			log.info("DeployInstallationFiles.DeletingOldFiles", //$NON-NLS-1$
@@ -327,27 +306,23 @@ public class DeployInstallationFiles {
 				this.host.getHostname());
 	}
 
-	private void uploadFiles(FileObject dependenciesFolder)
-			throws InstallationError {
+	private void uploadFiles(FileObject dependenciesFolder) throws InstallationError {
 		/*
 		 * Copy the files if they do not exist or if the existing file hash does
 		 * not match with the one calculated previously.
 		 * 
 		 * The log is done with an observer on the file selector.
 		 */
-		MD5ComparingFileSelector selector = new MD5ComparingFileSelector(
-				this.host, this.session, this.installer.getFileHashes(),
-				this.remoteDirectory);
-		MD5ComparingSelectorLogger observer = new MD5ComparingSelectorLogger(
-				log);
+		MD5ComparingFileSelector selector = new MD5ComparingFileSelector(this.host, this.session,
+				this.installer.getFileHashes(), this.remoteDirectory);
+		MD5ComparingSelectorLogger observer = new MD5ComparingSelectorLogger(log);
 		log.debug("DeployInstallationFiles.UploadingFiles", //$NON-NLS-1$
 				this.host.getHostname());
 		selector.addObserver(observer);
 		try {
 			this.remoteDirectory.copyFrom(dependenciesFolder, selector);
 		} catch (FileSystemException e) {
-			throw new InstallationError(e,
-					"DeployInstallationFiles.ErrorUploadingFiles", //$NON-NLS-1$
+			throw new InstallationError(e, "DeployInstallationFiles.ErrorUploadingFiles", //$NON-NLS-1$
 					this.host.getHostname());
 		}
 		selector.deleteObserver(observer);

@@ -60,20 +60,17 @@ public class HostInstallation {
 		FileObject remoteDirectory = sftpConnect();
 		try {
 			if (installer.doDeploy()) {
-				new DeployInstallationFiles(host, session, remoteDirectory,
-						installer).run();
+				new DeployInstallationFiles(host, session, remoteDirectory, installer).run();
 			}
 			new UploadConfiguration(installer.getConfigurationFilesToUpload(),
-					installer.getConfig().deleteOldConfigurationFiles(), log)
-					.run(host, remoteDirectory);
+					installer.getConfig().deleteOldConfigurationFiles(), log).run(host, remoteDirectory);
 		} finally {
 			try {
 				remoteDirectory.close();
 				log.debug("HostInstallation.SFTP.Disconnect", //$NON-NLS-1$
 						host.getHostname());
 			} catch (FileSystemException e) {
-				throw new InstallationError(e,
-						"HostInstallation.CouldNotClose", //$NON-NLS-1$
+				throw new InstallationError(e, "HostInstallation.CouldNotClose", //$NON-NLS-1$
 						remoteDirectory.getName().getURI());
 			}
 			if (session.isConnected()) {
@@ -92,10 +89,8 @@ public class HostInstallation {
 				host.getHostname(), host.getUsername());
 		try {
 			String uri = new URI("sftp", host.getUsername(), //$NON-NLS-1$
-					host.getHostname(), host.getPort(),
-					host.getInstallationDirectory(), null, null).toString();
-			remoteDirectory = VFS.getManager().resolveFile(uri,
-					installer.getSftpOptions());
+					host.getHostname(), host.getPort(), host.getInstallationDirectory(), null, null).toString();
+			remoteDirectory = VFS.getManager().resolveFile(uri, installer.getSftpOptions());
 		} catch (URISyntaxException | FileSystemException e) {
 			throw new InstallationError(e, "HostInstallation.SFTP.Connect.End", //$NON-NLS-1$
 					host.getHostname());
@@ -118,8 +113,7 @@ public class HostInstallation {
 		log.debug("HostInstallation.SSH.Connect.Start", //$NON-NLS-1$
 				host.getHostname(), host.getUsername());
 		try {
-			session = installer.getSsh().getSession(host.getUsername(),
-					host.getHostname(), host.getPort());
+			session = installer.getSsh().getSession(host.getUsername(), host.getHostname(), host.getPort());
 			session.connect();
 		} catch (JSchException e) {
 			/*

@@ -45,15 +45,13 @@ public final class UploadConfiguration {
 	private boolean deleteOldFiles;
 	private FileObject filesToUpload;
 
-	public UploadConfiguration(FileObject filesToUpload,
-			boolean deleteOldFiles, MessageFormattingLog log) {
+	public UploadConfiguration(FileObject filesToUpload, boolean deleteOldFiles, MessageFormattingLog log) {
 		this.filesToUpload = filesToUpload;
 		this.deleteOldFiles = deleteOldFiles;
 		this.log = log;
 	}
 
-	private String getLocalFileContents(String fileName)
-			throws InstallationError {
+	private String getLocalFileContents(String fileName) throws InstallationError {
 		log.debug("HostInstallation.LoadingLocal", //$NON-NLS-1$
 				fileName);
 		FileObject localFile;
@@ -61,8 +59,7 @@ public final class UploadConfiguration {
 		try {
 			localFile = filesToUpload.resolveFile(fileName);
 			if (localFile.exists()) {
-				localFileContents = IOUtils.toString(localFile.getContent()
-						.getInputStream());
+				localFileContents = IOUtils.toString(localFile.getContent().getInputStream());
 			}
 		} catch (IOException e) {
 			throw new InstallationError(e, "HostInstallation.CouldNotOpen", //$NON-NLS-1$
@@ -79,8 +76,8 @@ public final class UploadConfiguration {
 		return localFileContents;
 	}
 
-	private void modifyEnvShFile(Host host, FileObject configurationDirectory,
-			String fileName) throws InstallationError {
+	private void modifyEnvShFile(Host host, FileObject configurationDirectory, String fileName)
+			throws InstallationError {
 		log.debug("HostInstallation.Upload.File.Start", //$NON-NLS-1$
 				fileName, host.getHostname());
 		FileObject configurationFile;
@@ -115,8 +112,7 @@ public final class UploadConfiguration {
 				fileName, host.getHostname());
 	}
 
-	public void run(Host host, FileObject remoteDirectory)
-			throws InstallationError {
+	public void run(Host host, FileObject remoteDirectory) throws InstallationError {
 		log.debug("HostInstallation.Upload.Started", //$NON-NLS-1$
 				host.getHostname());
 		uploadConfiguration(remoteDirectory, host);
@@ -124,25 +120,19 @@ public final class UploadConfiguration {
 				host.getHostname());
 	}
 
-	private void uploadConfiguration(FileObject remoteDirectory, Host host)
-			throws InstallationError {
+	private void uploadConfiguration(FileObject remoteDirectory, Host host) throws InstallationError {
 		try {
-			FileObject configurationDirectory = remoteDirectory
-					.resolveFile("hadoop/etc/hadoop/"); //$NON-NLS-1$
+			FileObject configurationDirectory = remoteDirectory.resolveFile("hadoop/etc/hadoop/"); //$NON-NLS-1$
 			if (deleteOldFiles) {
 				configurationDirectory.delete(new AllFileSelector());
 				log.debug("HostInstallation.Upload.DeletingOldFiles", //$NON-NLS-1$
 						host.getHostname());
 			} else if (!configurationDirectory.exists()) {
-				throw new InstallationError(
-						"HostInstallation.Upload.NotDeployed"); //$NON-NLS-1$
+				throw new InstallationError("HostInstallation.Upload.NotDeployed"); //$NON-NLS-1$
 			}
-			configurationDirectory.copyFrom(filesToUpload,
-					new AllFileSelector());
-			modifyEnvShFile(host, configurationDirectory,
-					InstallerConstants.ENV_FILE_HADOOP);
-			modifyEnvShFile(host, configurationDirectory,
-					InstallerConstants.ENV_FILE_YARN);
+			configurationDirectory.copyFrom(filesToUpload, new AllFileSelector());
+			modifyEnvShFile(host, configurationDirectory, InstallerConstants.ENV_FILE_HADOOP);
+			modifyEnvShFile(host, configurationDirectory, InstallerConstants.ENV_FILE_YARN);
 			try {
 				configurationDirectory.close();
 			} catch (FileSystemException ex) {

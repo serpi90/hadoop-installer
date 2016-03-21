@@ -37,9 +37,7 @@ public class InstallerConfigurationParseError extends Exception {
 		super(MessageFormat.format(Messages.getString(format), arguments));
 	}
 
-	public InstallerConfigurationParseError(Throwable cause, String format,
-			Object... arguments) {
-		super(MessageFormat.format(Messages.getString(format), arguments),
-				cause);
+	public InstallerConfigurationParseError(Throwable cause, String format, Object... arguments) {
+		super(MessageFormat.format(Messages.getString(format), arguments), cause);
 	}
 }

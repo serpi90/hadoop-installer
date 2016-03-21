@@ -73,19 +73,15 @@ public class XMLDocumentReader {
 		try {
 			// Validate against XML Schema
 			DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-			Schema schema = SchemaFactory.newInstance(
-					XMLConstants.W3C_XML_SCHEMA_NS_URI)
-					.newSchema(
-							new StreamSource(xsdDocument.getContent()
-									.getInputStream()));
+			Schema schema = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI)
+					.newSchema(new StreamSource(xsdDocument.getContent().getInputStream()));
 			dbf.setValidating(false);
 			dbf.setSchema(schema);
 			DocumentBuilder db = dbf.newDocumentBuilder();
 			db.setErrorHandler(new ParseErrorHandler());
 			return db.parse(xmlDocument.getContent().getInputStream());
 		} catch (ParserConfigurationException | SAXException | IOException e) {
-			throw new InstallerConfigurationParseError(e,
-					"XMLDocumentReader.ParseError", xmlDocument.getName()); //$NON-NLS-1$
+			throw new InstallerConfigurationParseError(e, "XMLDocumentReader.ParseError", xmlDocument.getName()); //$NON-NLS-1$
 		}
 	}
 }

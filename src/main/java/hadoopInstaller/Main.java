@@ -71,28 +71,21 @@ public class Main {
 		System.setProperty("org.apache.commons.logging.Log", //$NON-NLS-1$
 				"org.apache.commons.logging.impl.NoOpLog"); //$NON-NLS-1$
 		// Configure SimpleLog to show date and omit log name
-		System.setProperty(
-				"org.apache.commons.logging.simplelog.showdatetime", "true"); //$NON-NLS-1$//$NON-NLS-2$
-		System.setProperty(
-				"org.apache.commons.logging.simplelog.showlogname", "false"); //$NON-NLS-1$//$NON-NLS-2$
-		System.setProperty(
-				"org.apache.commons.logging.simplelog.showShortLogname", "false"); //$NON-NLS-1$//$NON-NLS-2$
-		try (PrintStream filePrintStream = new PrintStream(
-				VFS.getManager()
-						.resolveFile(
-								MessageFormat.format(
-										"file://{0}/{1}", //$NON-NLS-1$
-										System.getProperty("user.dir"), Main.FILE_LOG_NAME)).getContent() //$NON-NLS-1$
-						.getOutputStream(true))) {
+		System.setProperty("org.apache.commons.logging.simplelog.showdatetime", "true"); //$NON-NLS-1$//$NON-NLS-2$
+		System.setProperty("org.apache.commons.logging.simplelog.showlogname", "false"); //$NON-NLS-1$//$NON-NLS-2$
+		System.setProperty("org.apache.commons.logging.simplelog.showShortLogname", "false"); //$NON-NLS-1$//$NON-NLS-2$
+		try (PrintStream filePrintStream = new PrintStream(VFS.getManager()
+				.resolveFile(MessageFormat.format("file://{0}/{1}", //$NON-NLS-1$
+						System.getProperty("user.dir"), Main.FILE_LOG_NAME)) //$NON-NLS-1$
+				.getContent()
+				.getOutputStream(true))) {
 
 			CompositeLog log = new CompositeLog();
 			Integer logLevel = detectLogLevel(args);
-			PrintStreamLog consoleLog = new PrintStreamLog(
-					Installer.INSTALLER_NAME, System.out);
+			PrintStreamLog consoleLog = new PrintStreamLog(Installer.INSTALLER_NAME, System.out);
 			consoleLog.setLevel(logLevel);
 			log.addLog(consoleLog);
-			PrintStreamLog fileLog = new PrintStreamLog(
-					Installer.INSTALLER_NAME, filePrintStream);
+			PrintStreamLog fileLog = new PrintStreamLog(Installer.INSTALLER_NAME, filePrintStream);
 			fileLog.setLevel(logLevel);
 			log.addLog(fileLog);
 			boolean deploy = Arrays.asList(args).contains("-deploy"); //$NON-NLS-1$
@@ -104,8 +97,7 @@ public class Main {
 				log.trace(e.getLocalizedMessage(), e);
 			}
 		} catch (FileSystemException e) {
-			new PrintStreamLog(Installer.INSTALLER_NAME, System.err).fatal(
-					e.getLocalizedMessage(), e);
+			new PrintStreamLog(Installer.INSTALLER_NAME, System.err).fatal(e.getLocalizedMessage(), e);
 			System.exit(1);
 		}
 

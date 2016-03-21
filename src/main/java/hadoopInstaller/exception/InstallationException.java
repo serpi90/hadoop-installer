@@ -37,8 +37,7 @@ public abstract class InstallationException extends Exception {
 		super(MessageFormat.format(Messages.getString(format), arguments));
 	}
 
-	public InstallationException(Throwable t, String format,
-			Object... arguments) {
+	public InstallationException(Throwable t, String format, Object... arguments) {
 		super(MessageFormat.format(Messages.getString(format), arguments), t);
 	}
 }

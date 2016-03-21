@@ -100,8 +100,7 @@ public class SshCommandExecutor {
 		channel.setErrStream(this.error);
 		try {
 			channel.connect();
-			BufferedReader consoleReader = new BufferedReader(
-					new InputStreamReader(channel.getInputStream()));
+			BufferedReader consoleReader = new BufferedReader(new InputStreamReader(channel.getInputStream()));
 			while (!channel.isClosed() || consoleReader.ready()) {
 				if (!consoleReader.ready()) {
 					doWait();
@@ -109,8 +108,7 @@ public class SshCommandExecutor {
 				output(consoleReader.readLine());
 			}
 		} catch (JSchException | IOException e) {
-			throw new ExecutionError(e,
-					"SshCommandExecutor.ErrorWhileExecuting", command); //$NON-NLS-1$
+			throw new ExecutionError(e, "SshCommandExecutor.ErrorWhileExecuting", command); //$NON-NLS-1$
 		} finally {
 			if (channel.isConnected()) {
 				channel.disconnect();
@@ -118,8 +116,7 @@ public class SshCommandExecutor {
 		}
 		this.exitStatus = channel.getExitStatus();
 		if (channel.getExitStatus() != 0) {
-			throw new ExecutionError(
-					"SshCommandExecutor.CommandReturnedStatus", command, //$NON-NLS-1$
+			throw new ExecutionError("SshCommandExecutor.CommandReturnedStatus", command, //$NON-NLS-1$
 					channel.getExitStatus());
 		}
 	}

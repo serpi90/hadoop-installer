@@ -33,8 +33,7 @@ public class InstallationFatalError extends InstallationException {
 		super(format, arguments);
 	}
 
-	public InstallationFatalError(Throwable t, String format,
-			Object... arguments) {
+	public InstallationFatalError(Throwable t, String format, Object... arguments) {
 		super(t, format, arguments);
 	}
 }

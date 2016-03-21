@@ -48,11 +48,9 @@ public class EnvShBuilder {
 	}
 
 	public void build() throws IOException {
-		try (Writer writer = new PrintWriter(this.file.getContent()
-				.getOutputStream())) {
+		try (Writer writer = new PrintWriter(this.file.getContent().getOutputStream())) {
 			for (Entry<String, String> entry : this.parameters.entrySet()) {
-				writer.write(MessageFormat.format(
-						"export {0}={1}\n", entry.getKey(), entry.getValue())); //$NON-NLS-1$
+				writer.write(MessageFormat.format("export {0}={1}\n", entry.getKey(), entry.getValue())); //$NON-NLS-1$
 			}
 			writer.write(this.customConfig);
 		}

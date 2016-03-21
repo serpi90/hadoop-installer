@@ -6,6 +6,10 @@
 	<packaging>jar</packaging>
 	<version>1.0</version>
 	<name>Hadoop Installer</name>
+	<inceptionYear>2015</inceptionYear>
+	<organization>
+		<name>Julián Maestri</name>
+	</organization>
 	<description>A tool for installing and deploying configuration for Apache Hadoop on a linux cluster</description>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -57,6 +61,14 @@
 						</manifest>
 					</archive>
 					<useDefaultManifestFile>true</useDefaultManifestFile>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>license-maven-plugin</artifactId>
+				<version>1.8</version>
+				<configuration>
+					<licenseName>mit</licenseName>
 				</configuration>
 			</plugin>
 		</plugins>
